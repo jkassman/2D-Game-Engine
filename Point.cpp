@@ -1,5 +1,9 @@
 #include "Point.hpp"
 
+#include <iostream>
+
+using namespace std;
+
 Point::Point()
 {
     this->x = 0;
@@ -16,6 +20,11 @@ Point::Point(const Point &other)
 {
     this->x = other.x;
     this->y = other.y;
+}
+
+void Point::print()
+{
+	cout << "(" << x << "," << y << ")" << endl;
 }
 
 Point Point::operator=(const Point &other)

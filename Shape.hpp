@@ -11,6 +11,8 @@ class Crack;
 
 class Shape
 {
+	friend Crack;
+
 private:
     //Assumed all points are connected to each other (with lines) in order.
     //For example, 0-1, 1-2, and 2-0 all have lines connecting them. 
@@ -19,6 +21,8 @@ private:
     //they are updated whenever points change.
     std::vector<Crack> cracks;
     std::vector<Shape> *shapes; //pointer to a vector of all drawable shapes.
+
+	void generateLines();
 
 public:
     Shape(std::vector<Point> givenPoints, std::vector<Shape> *allShapes);
@@ -29,6 +33,8 @@ public:
     void fractureAt(Point clickPoint);
 
     void draw();
+
+	void addPoint(Point otherPoint);
 };
 
 #endif

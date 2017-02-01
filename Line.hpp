@@ -11,8 +11,9 @@ public:
 
     Line();
     Line(Point point1, Point point2);
-    bool intersects(const Line &otherLine);
-    Point pointWithin(Point testPoint, int radius) const;
+	void draw();
+    bool intersects(const Line &otherLine, Point *resultPoint);
+    bool pointWithin(Point testPoint, int radius, Point *resultPoint) const;
     bool operator==(const Line &other);
 };
 

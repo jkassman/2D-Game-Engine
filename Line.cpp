@@ -1,4 +1,5 @@
 #include "Line.hpp"
+#include "JDL.h"
 
 #include <algorithm>
 #include <iostream>
@@ -16,8 +17,13 @@ Line::Line(Point point1, Point point2)
     this->point2 = point2;
 }
 
-bool Line::intersects(const Line &otherLine)
-{    
+void Line::draw()
+{
+	JDL::line(point1.x, point1.y, point2.x, point2.y);
+}
+
+bool Line::intersects(const Line &otherLine, Point *resultPoint)
+{
     int x1, x2, x3, x4;
     int y1, y2, y3, y4;
     x1 = point1.x;
@@ -41,17 +47,16 @@ bool Line::intersects(const Line &otherLine)
     int x, y;
     x = numX/denomX;
     y = numY/denomY;
-    Point thisResult, otherResult;
-    thisResult = this->pointWithin(Point(x, y),1);
-    otherResult = otherLine.pointWithin(Point(x, y), 1);
-    if ((thisResult.x > -1000000) && (otherResult.x > -1000000))
+	*resultPoint = Point(x, y);
+    Point dummyPoint;
+	if (this->pointWithin(Point(x, y), 1, &dummyPoint) && otherLine.pointWithin(Point(x, y), 1, &dummyPoint))
     {
         return true;
     }
     return false;
 }
 
-Point Line::pointWithin(Point testPoint, int radius) const
+bool Line::pointWithin(Point testPoint, int radius, Point *resultPoint) const
 {
     double slope;
     int maxY, minY, maxX, minX;
@@ -67,7 +72,22 @@ Point Line::pointWithin(Point testPoint, int radius) const
     {
         if (point2.x == point1.x)
         {
-            return Point(point2.x, testPoint.y);
+			int verticalY;
+			if (testPoint.y > maxY)
+			{
+				verticalY = maxY;
+			}
+			else if (testPoint.y < minY)
+			{
+				verticalY = minY;
+			}
+			else
+			{
+				verticalY = testPoint.y;
+			}
+			resultPoint->x = point2.x;
+			resultPoint->y = verticalY;
+			return true;
         }  
         else
         {
@@ -78,11 +98,38 @@ Point Line::pointWithin(Point testPoint, int radius) const
             if ((testPoint.y >= (checkY - radius))
                 && (testPoint.y <= (checkY + radius)))
             {
-                return Point(testPoint.x, checkY);
+				int returnX, returnY;
+				if (testPoint.x > maxX)
+				{
+					returnX = maxX;
+				}
+				else if (testPoint.x < minX)
+				{
+					returnX = minX;
+				}
+				else
+				{
+					returnX = testPoint.x;
+				}
+				if (checkY > maxY)
+				{
+					returnY = maxY;
+				}
+				else if (checkY < minY)
+				{
+					returnY = minY;
+				}
+				else
+				{
+					returnY = checkY;
+				}
+				resultPoint->x = returnX;
+				resultPoint->y = returnY;
+				return true; 
             }
         }
     }
-    return Point(-1000000, -1000000);
+	return false;
 }
 
 bool Line::operator==(const Line &other)
