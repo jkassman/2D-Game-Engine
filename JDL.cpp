@@ -1,8 +1,14 @@
 #include <stdio.h>
-#include <Windows.h>
 #include <iostream>
 
-#include "JDL.h"
+#include "JDL.hpp"
+
+#ifdef JDL_USE_SDL
+#include <Windows.h>
+
+#else
+#include "gfx_j.h"
+#endif
 
 JDL::JDL()
 {
@@ -13,7 +19,8 @@ JDL::~JDL()
 {
 }
 
-bool JDL::init(int width, int height, char* title)
+#ifdef JDL_USE_SDL
+bool JDL::init(int width, int height, const char* title)
 {
 	SCREEN_WIDTH = width;
 	SCREEN_HEIGHT = height;
@@ -826,8 +833,6 @@ void JDL::fillPoly(std::vector<int> toDraw)
 	}
 }
 
-int JDL::SCREEN_WIDTH = 800;
-int JDL::SCREEN_HEIGHT = 800;
 SDL_Window* JDL::gWindow = NULL;
 SDL_Renderer* JDL::gRenderer = NULL;
 TTF_Font* JDL::gFont = NULL;
@@ -835,3 +840,45 @@ TTF_Font* JDL::gFont = NULL;
 Uint8 JDL::myDrawColor[] = { 0xFF, 0xFF, 0xFF };
 Uint8 JDL::myBackColor[] = { 0, 0, 0 };
 std::list <SDL_Texture*> JDL::textList;
+
+#else
+
+bool JDL::init(int width, int height, const char *title)
+{
+    gfx_open(width, height, title);
+    return true;
+}
+
+void JDL::flush()
+{
+    gfx_flush();
+}
+
+void JDL::line(int x1, int y1, int x2, int y2)
+{
+    gfx_line(x1, y1, x2, y2);
+}
+
+void JDL::clear()
+{
+    gfx_clear();
+}
+
+char JDL::wait(int *x, int *y)
+{
+    char toReturn;
+    toReturn = gfx_wait();
+    *x = gfx_xpos();
+    *y = gfx_ypos();
+    return toReturn;
+}
+
+void JDL::circle(int x, int y, int r)
+{
+    gfx_circle(x, y, r);
+}
+
+#endif
+int JDL::SCREEN_WIDTH = 800;
+int JDL::SCREEN_HEIGHT = 800;
+

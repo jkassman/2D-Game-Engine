@@ -12,9 +12,10 @@ public:
     Point();
     Point(int x, int y);
     Point(const Point &other);
-	void print();
+    void print();
     Point operator=(const Point &other);
     bool operator==(const Point &other);
+    bool operator<(const Point &other) const;
     int operator[](char coord);
 };
 

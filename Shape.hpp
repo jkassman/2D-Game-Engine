@@ -11,7 +11,7 @@ class Crack;
 
 class Shape
 {
-	friend Crack;
+	friend class Crack;
 
 private:
     //Assumed all points are connected to each other (with lines) in order.
@@ -34,7 +34,9 @@ public:
 
     void draw();
 
-	void addPoint(Point otherPoint);
+    int rayTrace(Line &ray);
+
+    void addPoint(Point otherPoint);
 };
 
 #endif

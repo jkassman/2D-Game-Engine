@@ -1,19 +1,25 @@
 /*
 	Jacob's DirectMedia Layer
 */
-#ifndef JDL_H
-#define JDL_H
+#ifndef JDL_HPP
+#define JDL_HPP
 
 #define MIDWAY_FIRE_KEY SDL_SCANCODE_F
 #define MIDWAY_MOVE_KEY SDL_SCANCODE_M
 
+
+//#define JDL_USE_SDL
+
+#ifdef JDL_USE_SDL
 #include <SDL.h>
 #undef main
 #include <SDL_image.h>
 #include <SDL_ttf.h>
+#endif
+
+
 #include <string>
 #include <vector>
-
 #include <list>
 
 class JDL
@@ -22,10 +28,15 @@ public:
 	JDL();
 	~JDL();
 	
-	static bool init(int width, int height, char* title);
+	static bool init(int width, int height, const char* title);
 	static void close();
+#ifdef JDL_USE_SDL
 	static void setDrawColor(Uint8 r, Uint8 g, Uint8 b);
 	static void setBackColor(Uint8 r, Uint8 g, Uint8 b);
+#else
+        static void setDrawColor(int r, int g, int b);
+        static void setBackColor(int r, int g, int b);
+#endif
 	static void line(int x1, int y1, int x2, int y2);
 	static void circle(int x, int y, int r);
 	static void rect(int x, int y, int width, int height); //x and y is top left corner
@@ -49,13 +60,16 @@ private:
 	static void numericKeyBlockDouble(int digit, std::string digitString, std::string & toDisplay,
 		double & toReturn, int & digitNum, bool &changed, int sign);
 	//bool loadFromRenderedText(char* textureText, int width);
+        
+
+        //Screen Dimensions
+	static int SCREEN_WIDTH;
+	static int SCREEN_HEIGHT;
+
+#ifdef JDL_USE_SDL
 	static std::list <SDL_Texture*> textList;
 	static void saveTexture(SDL_Texture*);
 	static void freeTextures();
-
-	//Screen Dimensions
-	static int SCREEN_WIDTH;
-	static int SCREEN_HEIGHT;
 
 	static Uint8 myDrawColor[3];
 	static Uint8 myBackColor[3];
@@ -64,6 +78,7 @@ private:
 	static SDL_Window* gWindow;
 	static SDL_Renderer* gRenderer;
 	static TTF_Font* gFont;
+#endif
 };
 
 #endif

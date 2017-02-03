@@ -1,7 +1,8 @@
 #include "Shape.hpp"
-#include "JDL.h"
+#include "JDL.hpp"
 
 #include <iostream>
+#include <set>
 
 using namespace std;
 
@@ -65,4 +66,25 @@ void Shape::generateLines()
 		}
 		this->lines.push_back(Line(Point(i->x, i->y), Point(next->x, next->y)));
 	}
+}
+
+
+//returns the number of lines in the shape that are intersected.
+//Assumes the line is a ray starting at point1 and going to point2.
+int Shape::rayTrace(Line &ray)
+{
+    //check to see how many lines in the shape the ray intersects with
+    Point intersectPoint;
+    vector<Line>::iterator i;
+    set<Point> interPoints;
+    //int numIntersects = 0;
+    for (i = lines.begin(); i != lines.end(); ++i)
+    {
+        if (ray.rayIntersects(*i, &intersectPoint))
+        {
+            interPoints.insert(intersectPoint);
+            //numIntersects++;
+        }
+    }
+    return interPoints.size();//numIntersects;
 }
