@@ -11,15 +11,16 @@ public:
 
     Line();
     Line(Point point1, Point point2);
-    void draw();
-    void length();
+    void draw() const;
+    double length() const;
 
     bool intersectsInfinite(const Line &otherLine, Point *resultPoint);
     bool rayIntersects(const Line &otherLine, Point *resultPoint);
-    bool onRay(Point testPoint, int radius, Point *resultPoint);
-    bool onRay(Point testPoint, int radius);
+    bool onRay(Point testPoint, double radius, Point *resultPoint);
+    bool onRay(Point testPoint);
     bool intersects(const Line &otherLine, Point *resultPoint);
-    bool pointWithin(Point testPoint, int radius, Point *resultPoint) const;
+    bool on(Point testPoint, double radius, Point *resultPoint) const;
+    bool on(Point testPoint) const;
     bool operator==(const Line &other);
 };
 

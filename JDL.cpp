@@ -19,6 +19,15 @@ JDL::~JDL()
 {
 }
 
+bool JDL::doublesEqual(double d1, double d2)
+{
+    if ((d1 >= (d2 - PRECISION)) && (d1 <= (d2 + PRECISION)))
+    {
+        return true;
+    }
+    return false;
+}
+
 #ifdef JDL_USE_SDL
 bool JDL::init(int width, int height, const char* title)
 {

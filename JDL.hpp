@@ -28,6 +28,9 @@ public:
 	JDL();
 	~JDL();
 	
+        static const double PRECISION = 0.01;
+
+        static bool doublesEqual(double d1, double d2);
 	static bool init(int width, int height, const char* title);
 	static void close();
 #ifdef JDL_USE_SDL
