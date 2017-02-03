@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <math.h>
 
 using namespace std;
 
@@ -19,16 +20,21 @@ Line::Line(Point point1, Point point2)
     this->point2 = point2;
 }
 
-void Line::draw()
+void Line::draw() const
 {
-	JDL::line(point1.x, point1.y, point2.x, point2.y);
+    JDL::line(point1.x, point1.y, point2.x, point2.y);
+}
+
+double Line::length() const
+{
+    return sqrt(pow(point1.x-point2.x, 2) + pow(point1.y - point2.y, 2));
 }
 
 //check if the two lines (not segments) intersect
 bool Line::intersectsInfinite(const Line &otherLine, Point *resultPoint)
 {
-    int x1, x2, x3, x4;
-    int y1, y2, y3, y4;
+    double x1, x2, x3, x4;
+    double y1, y2, y3, y4;
     x1 = point1.x;
     x2 = point2.x;
     x3 = otherLine.point1.x;
@@ -37,13 +43,13 @@ bool Line::intersectsInfinite(const Line &otherLine, Point *resultPoint)
     y2 = point2.y;
     y3 = otherLine.point1.y;
     y4 = otherLine.point2.y;
-    int numX, denomX;
+    double numX, denomX;
     numX = (x1*y2 - y1*x2)*(x3-x4) - (x1 - x2)*(x3*y4 - y3*x4);
     denomX = (x1 -x2)*(y3 - y4) - (y1 - y2)*(x3 - x4);
-    int numY, denomY;
+    double numY, denomY;
     numY = (x1*y2 - y1*x2)*(y3 - y4) - (y1 - y2)*(x3*y4 - y3*x4);
     denomY = (x1 - x2)*(y3 - y4) - (y1 - y2)*(x3 - x4);
-    if (denomX == 0 || denomY == 0)
+    if (JDL::doublesEqual(denomX, 0) || JDL::doublesEqual(denomY, 0))
     {
         return false;
     }
@@ -62,28 +68,23 @@ bool Line::rayIntersects(const Line &otherLine, Point *resultPoint)
     {
         return false;
     }
-    Point dummyPoint;
-    if (!otherLine.pointWithin(Point(intersect.x, intersect.y), CWR, &dummyPoint))
+    if (!otherLine.on(intersect))
     {
         return false;
     }
     //we now know that this infinite line intersects with the otherLine segment.
     //Now we need to know if this intersection was on the wrong side of the ray.
 
-    //cout << "Points!" << endl;
-    //point1.print();
-    //point2.print();
-    //intersect.print();
     if (point2.x > point1.x)
     { //then decreasing x is bad
-        if (intersect.x < point1.x - CWR)
+        if (intersect.x < point1.x - JDL::PRECISION)
         {
             return false;
         }
     }
     else
     { //increasing x is bad
-        if (intersect.x > point1.x + CWR)
+        if (intersect.x > point1.x + JDL::PRECISION)
         {
             return false;
         }
@@ -91,14 +92,14 @@ bool Line::rayIntersects(const Line &otherLine, Point *resultPoint)
     
     if (point2.y > point1.y)
     { //decreasing y is bad
-        if (intersect.y < point1.y -CWR)
+        if (intersect.y < point1.y - JDL::PRECISION)
         {
             return false;
         }
     }
     else
     { //increasing y is bad
-        if (intersect.y > point1.y +CWR)
+        if (intersect.y > point1.y + JDL::PRECISION)
         {
             return false;
         }
@@ -118,9 +119,7 @@ bool Line::intersects(const Line &otherLine, Point *resultPoint)
     {
         return false;
     }
-    Point dummyPoint;
-    if (this->pointWithin(Point(temp.x, temp.y), CWR, &dummyPoint) 
-        && otherLine.pointWithin(Point(temp.x, temp.y), CWR, &dummyPoint))
+    if (this->on(temp) && otherLine.on(temp))
     {
         *resultPoint = temp;
         return true;
@@ -128,10 +127,10 @@ bool Line::intersects(const Line &otherLine, Point *resultPoint)
     return false;
 }
 
-bool Line::pointWithin(Point testPoint, int radius, Point *resultPoint) const
+bool Line::on(Point testPoint, double radius, Point *resultPoint) const
 {
     double slope;
-    int maxY, minY, maxX, minX;
+    double maxY, minY, maxX, minX;
     maxY = max(point2.y, point1.y);
     minY = min(point2.y, point1.y); 
     maxX = max(point2.x, point1.x);
@@ -142,9 +141,9 @@ bool Line::pointWithin(Point testPoint, int radius, Point *resultPoint) const
         && (testPoint.x <= (maxX + radius)) 
         && (testPoint.x >= (minX - radius)))
     {
-        if (point2.x == point1.x)
+        if (JDL::doublesEqual(point2.x, point1.x))
         { //catch case where line is vertical
-            int verticalY;
+            double verticalY;
             if (testPoint.y > maxY)
             {
                 verticalY = maxY;
@@ -163,14 +162,12 @@ bool Line::pointWithin(Point testPoint, int radius, Point *resultPoint) const
         }  
         else
         {
-            slope = ((double) point2.y - point1.y) / (point2.x - point1.x);
-            int checkY = (int) (slope * testPoint.x + point1.y - (slope * point1.x));
-            //cout << "input" << "(" << testPoint.x << "," << testPoint.y << ")" << endl;
-            //cout << "test" << " (" << testPoint.x << "," << checkY << ")" << endl;
+            slope = (point2.y - point1.y) / (point2.x - point1.x);
+            double checkY = (slope*testPoint.x + point1.y - (slope * point1.x));
             if ((testPoint.y >= (checkY - radius))
                 && (testPoint.y <= (checkY + radius)))
             {
-                int returnX, returnY;
+                double returnX, returnY;
                 if (testPoint.x > maxX)
                 {
                     returnX = maxX;
@@ -202,6 +199,13 @@ bool Line::pointWithin(Point testPoint, int radius, Point *resultPoint) const
         }
     }
     return false;
+}
+
+//lazy implementation
+bool Line::on(Point testPoint) const
+{
+    Point dummyPoint;
+    return this->on(testPoint, JDL::PRECISION, &dummyPoint);
 }
 
 bool Line::operator==(const Line &other)

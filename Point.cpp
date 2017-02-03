@@ -1,4 +1,5 @@
 #include "Point.hpp"
+#include "JDL.hpp"
 
 #include <iostream>
 
@@ -10,7 +11,7 @@ Point::Point()
     this->y = 0;
 }
 
-Point::Point(int x, int y)
+Point::Point(double x, double y)
 {
     this->x = x;
     this->y = y;
@@ -22,7 +23,7 @@ Point::Point(const Point &other)
     this->y = other.y;
 }
 
-void Point::print()
+void Point::print() const
 {
 	cout << "(" << x << "," << y << ")" << endl;
 }
@@ -53,10 +54,29 @@ int Point::operator[](char coord)
 
 bool Point::operator==(const Point &other)
 {
-    return ((x == other.x) && (y == other.y)); 
+    return (JDL::doublesEqual(x, other.x) && JDL::doublesEqual(y, other.y));
 }
 
+//compare x first, then compare y
 bool Point::operator<(const Point &other) const
 {
-    return (x + y) < (other.x + other.y);
+    if (x < other.x)
+    {
+        return true;
+    }
+    else if (JDL::doublesEqual(x, other.x))
+    {
+        if (y < other.y)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        return false;
+    }
 }

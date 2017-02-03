@@ -7,16 +7,16 @@ class Point
 private:
 
 public:
-    int x, y;
+    double x, y;
 
     Point();
-    Point(int x, int y);
+    Point(double x, double y);
     Point(const Point &other);
-    void print();
+    void print() const;
     Point operator=(const Point &other);
     bool operator==(const Point &other);
-    bool operator<(const Point &other) const;
     int operator[](char coord);
+    bool operator<(const Point &other) const;
 };
 
 #endif

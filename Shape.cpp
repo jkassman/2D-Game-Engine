@@ -2,7 +2,7 @@
 #include "JDL.hpp"
 
 #include <iostream>
-#include <set>
+#include <algorithm>
 
 using namespace std;
 
@@ -33,7 +33,7 @@ void Shape::fractureAt(Point clickPoint)
     for (i = lines.begin(); i != lines.end(); ++i)
     {
         Point result;
-		if (i->pointWithin(clickPoint, 10, &result))
+		if (i->on(clickPoint, 10, &result))
         {
             //JDL::circle(result.x, result.y, 8);
             cracks.push_back(Crack(this, result, *i));
@@ -51,21 +51,21 @@ void Shape::addPoint(Point otherPoint)
 
 void Shape::generateLines()
 {
-	lines.clear();
-	vector<Point>::iterator i;
-	vector<Point>::iterator next;
-	for (i = this->points.begin(); i != this->points.end(); ++i)
-	{
-		if ((i + 1) == this->points.end())
-		{
-			next = this->points.begin();
-		}
-		else
-		{
-			next = i + 1;
-		}
-		this->lines.push_back(Line(Point(i->x, i->y), Point(next->x, next->y)));
-	}
+    lines.clear();
+    vector<Point>::iterator i;
+    vector<Point>::iterator next;
+    for (i = this->points.begin(); i != this->points.end(); ++i)
+    {
+        if ((i + 1) == this->points.end())
+        {
+            next = this->points.begin();
+        }
+        else
+        {
+            next = i + 1;
+        }
+        this->lines.push_back(Line(Point(i->x, i->y), Point(next->x, next->y)));
+    }
 }
 
 
@@ -76,15 +76,30 @@ int Shape::rayTrace(Line &ray)
     //check to see how many lines in the shape the ray intersects with
     Point intersectPoint;
     vector<Line>::iterator i;
-    set<Point> interPoints;
-    //int numIntersects = 0;
+    int numIntersects = 0;
+    vector<Point> intersectPoints;
     for (i = lines.begin(); i != lines.end(); ++i)
     {
         if (ray.rayIntersects(*i, &intersectPoint))
         {
-            interPoints.insert(intersectPoint);
-            //numIntersects++;
+            intersectPoints.push_back(intersectPoint);
+            numIntersects++;
         }
     }
-    return interPoints.size();//numIntersects;
+    
+    //check for duplicates:
+    sort(intersectPoints.begin(), intersectPoints.begin());
+    vector<Point>::iterator j;
+    Point previous = *intersectPoints.begin();
+    for (j = intersectPoints.begin()+1; j != intersectPoints.end(); ++j)
+    {
+        if (previous == *j)
+        {
+            cout << "Found a duplicate!" << endl;
+            numIntersects--;
+        }
+        previous = *j;
+    }
+
+    return numIntersects;
 }

@@ -29,6 +29,8 @@ void Crack::increase(int force)
     int radius = force * 100;
     int numIntersects = 0;
     vector<Point> intersectPoints;
+    Line fractureLine;
+
     while (numIntersects == 0)
     {
         //create a random slope of the line
@@ -36,16 +38,15 @@ void Crack::increase(int force)
         //double slope = tan(degree*M_PI / 180);
         Point nextPoint(points[0].x + cos(degree*M_PI / 180) * radius, 
                         points[0].y + sin(degree*M_PI / 180) * radius);
-        Line fractureLine(points[0], nextPoint);
+        fractureLine = Line(points[0], nextPoint);
 
         //see how many lines fractureLine's ray intersects with.
         int numRay = parentShape->rayTrace(fractureLine);
         cout << "rayTrace returned: " << numRay;
         //if the start point of this fracture is on the crack's start line,
         //subtract one from the rayTrace count.
-        Point dummyPoint;
         bool startsOnLine = false;
-        if (line.pointWithin(fractureLine.point1, 1, &dummyPoint))
+        if (line.on(fractureLine.point1))
         {
             startsOnLine = true;
             numRay--;
@@ -74,7 +75,7 @@ void Crack::increase(int force)
                 if (startsOnLine)
                 {
                     //disregard intersects on the line the crack starts from
-                    if (line.pointWithin(intersectPoint, 1, &dummyPoint))
+                    if (line.on(intersectPoint))
                     {
                         continue;
                     }
@@ -84,14 +85,24 @@ void Crack::increase(int force)
             }
         }
     }
-    /*
-    points.push_back(intersectPoint)
-    //if there are multiple intersects, choose the closest edge
-    vector<Point>::iterator j;
-    for (j = intersectPoints.begin(); j != intersectPoints.end(); ++j)
+
+    if (numIntersects > 0)
     {
-        Line checkLine(fractureLine.point1, intersectPoint
+        fractureLine.point2 = intersectPoints[0];
+        if (numIntersects > 1)
+        {
+            //if there are multiple intersects, choose the closest edge
+            vector<Point>::iterator j;
+            for (j = intersectPoints.begin()+1; j != intersectPoints.end(); ++j)
+            {
+                Line checkLine(fractureLine.point1, *j);
+                if (checkLine.length() < fractureLine.length())
+                {
+                    fractureLine.point2 = *j;
+                }
+            }
+        }
     }
-    */
-    Line(points[0], intersectPoints[0]).draw();
+
+    fractureLine.draw();
 }
