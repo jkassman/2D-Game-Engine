@@ -11,7 +11,7 @@ using namespace std;
 Crack::Crack(Shape *parent, Point startPoint, Line startLine)
 {
     parentShape = parent;
-    line = startLine;
+    this->startLine = startLine;
     points.push_back(startPoint);
 }
 
@@ -26,19 +26,22 @@ void Crack::increase(int force)
     //If it does, split the shape apart.
     //    (If it intersects with multiple, choose the closest edge)
 
-    int radius = force * 100;
+    int radius = force;
     int numIntersects = 0;
     vector<Point> intersectPoints;
     Line fractureLine;
 
-    while (numIntersects == 0)
+    
+    //breaks at the end of the loop.
+    //the only way to stay in the loop is with continue
+    while (true)
     {
         //create a random slope of the line
         int degree = rand() % 360;
         //double slope = tan(degree*M_PI / 180);
         Point nextPoint(points[0].x + cos(degree*M_PI / 180) * radius, 
                         points[0].y + sin(degree*M_PI / 180) * radius);
-        fractureLine = Line(points[0], nextPoint);
+        fractureLine = Line(*(points.end()-1), nextPoint);
 
         //see how many lines fractureLine's ray intersects with.
         int numRay = parentShape->rayTrace(fractureLine);
@@ -46,7 +49,7 @@ void Crack::increase(int force)
         //if the start point of this fracture is on the crack's start line,
         //subtract one from the rayTrace count.
         bool startsOnLine = false;
-        if (line.on(fractureLine.point1))
+        if (startLine.on(fractureLine.point1))
         {
             startsOnLine = true;
             numRay--;
@@ -75,7 +78,7 @@ void Crack::increase(int force)
                 if (startsOnLine)
                 {
                     //disregard intersects on the line the crack starts from
-                    if (line.on(intersectPoint))
+                    if (startLine.on(intersectPoint))
                     {
                         continue;
                     }
@@ -84,6 +87,7 @@ void Crack::increase(int force)
                 intersectPoints.push_back(intersectPoint);
             }
         }
+        break;
     }
 
     if (numIntersects > 0)
@@ -102,7 +106,50 @@ void Crack::increase(int force)
                 }
             }
         }
+        addPoint(fractureLine.point2);
+        split();
     }
 
-    fractureLine.draw();
+    draw(); //TODO: consider whether or not this should be here
+}
+
+void Crack::draw()
+{
+    vector<Line>::iterator i;
+    for (i = lines.begin(); i != lines.end(); ++i)
+    {
+        i->draw();
+    }
+}
+
+void Crack::addPoint(Point toAdd)
+{
+    points.push_back(toAdd);
+    generateLinesFromPoints(&lines, points);
+}
+
+void Crack::split(Line &endLine)
+{
+    //alright, so what to do here?
+    //we have the start and end points of the crack...
+    //so what to do..
+    //find what line the end point of the crack is on? Well..
+    //we could be passed that.
+    //I mean I could check for equality..or be passed the index..
+    //right now equality is probably easier. Could be improved for speed later
+
+    //ok. so..we search the shape until we find a line equal to this one
+    //then we mark this as the start point, the next point is startLine.point2.
+    //then..we continue on the line until we reach endLine
+    //at which point...we cap it with endPoint.
+
+
+    //new plan: Copy the crack's point vector.
+    //Start at the endPoint of the crack.
+    //go to endLine's point2.
+    //walk down the shape's line until we hit startLine
+    //then add the startpoint--no don't. That will define a shape.
+    //so there's one shape.
+
+    //do the same thing expect going down endline's point1?
 }

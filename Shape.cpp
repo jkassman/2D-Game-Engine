@@ -10,7 +10,7 @@ Shape::Shape(vector<Point> givenPoints, vector<Shape> *allShapes)
 {
     this->points = givenPoints;
     this->shapes = allShapes;
-	generateLines();
+    generateLinesFromPoints(&lines, points);
 }
 
 bool Shape::inside(Point toTest)
@@ -37,7 +37,7 @@ void Shape::fractureAt(Point clickPoint)
         {
             //JDL::circle(result.x, result.y, 8);
             cracks.push_back(Crack(this, result, *i));
-            (cracks.end()-1)->increase(10);
+            (cracks.end()-1)->increase(100);
             return;
         }
     }
@@ -46,25 +46,25 @@ void Shape::fractureAt(Point clickPoint)
 void Shape::addPoint(Point otherPoint)
 {
 	points.push_back(otherPoint);
-	generateLines();
+	generateLinesFromPoints(&lines, points);
 }
 
-void Shape::generateLines()
+void generateLinesFromPoints(vector<Line> *lines, vector<Point> &points)
 {
-    lines.clear();
+    lines->clear();
     vector<Point>::iterator i;
     vector<Point>::iterator next;
-    for (i = this->points.begin(); i != this->points.end(); ++i)
+    for (i = points.begin(); i != points.end(); ++i)
     {
-        if ((i + 1) == this->points.end())
+        if ((i + 1) == points.end())
         {
-            next = this->points.begin();
+            next = points.begin();
         }
         else
         {
             next = i + 1;
         }
-        this->lines.push_back(Line(Point(i->x, i->y), Point(next->x, next->y)));
+        lines->push_back(Line(*i, *next));
     }
 }
 
@@ -88,7 +88,7 @@ int Shape::rayTrace(Line &ray)
     }
     
     //check for duplicates:
-    sort(intersectPoints.begin(), intersectPoints.begin());
+    sort(intersectPoints.begin(), intersectPoints.end());
     vector<Point>::iterator j;
     Point previous = *intersectPoints.begin();
     for (j = intersectPoints.begin()+1; j != intersectPoints.end(); ++j)
