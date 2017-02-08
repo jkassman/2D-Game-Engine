@@ -6,29 +6,33 @@
 
 #include <vector>
 
+class Line;
 class Shape;
 
 class Crack
 {
 private:
-    std::vector<Point> points;
     std::vector<Line> lines;
-    Line startLine;
+    Line *startLine;
     Shape *parentShape;
-    
+    bool point;
+    bool splitting;
 
     //modifies the current shape and creates a new one.
     //called by increase when the crack intersects a line
-    void split();
+    void split(Line *endLine);
     void addPoint(Point toAdd);
     
 public:
-    Crack(Shape *parent, Point startPoint, Line startLine);
+    Crack(Shape *parent, Point startPoint, Line *startLine);
     
     //force is a measure of how much the crack should increase in length
-    void increase(int force);
+    void increase(double force);
+    Point startPoint();
 
-    void draw();
+    void move(double distance, double degrees);
+    void draw() const;
+    bool isSplitting() const;
 };
 
 #endif

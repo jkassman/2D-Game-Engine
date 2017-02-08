@@ -8,9 +8,27 @@ using namespace std;
 
 Shape::Shape(vector<Point> givenPoints, vector<Shape> *allShapes)
 {
-    this->points = givenPoints;
-    this->shapes = allShapes;
-    generateLinesFromPoints(&lines, points);
+    this->allShapes = allShapes;
+    vector<Point>::iterator i;
+    vector<Point>::iterator next;
+    for (i = givenPoints.begin(); i != givenPoints.end(); ++i)
+    {
+        if ((i + 1) == givenPoints.end())
+        {
+            next = givenPoints.begin();
+        }
+        else
+        {
+            next = i + 1;
+        }
+        addPoint(*next);
+    }
+}
+
+Shape::Shape(vector<Line> &givenLines, vector<Shape> *allShapes)
+{
+    this->allShapes = allShapes;
+    this->lines = givenLines;
 }
 
 bool Shape::inside(Point toTest)
@@ -18,12 +36,21 @@ bool Shape::inside(Point toTest)
     return false;
 }
 
+void Shape::move(double distance, double degrees)
+{
+    vector<Line>::iterator i;
+    for (i = lines.begin(); i != lines.end(); ++i)
+    {
+        i->move(distance, degrees);
+    }
+}
+
 void Shape::draw()
 {
     vector<Line>::iterator i;
     for (i = lines.begin(); i != lines.end(); ++i)
     {
-		i->draw();
+        i->draw();
     }
 }
 
@@ -33,39 +60,28 @@ void Shape::fractureAt(Point clickPoint)
     for (i = lines.begin(); i != lines.end(); ++i)
     {
         Point result;
-		if (i->on(clickPoint, 10, &result))
+        if (i->on(clickPoint, 10, &result))
         {
             //JDL::circle(result.x, result.y, 8);
-            cracks.push_back(Crack(this, result, *i));
-            (cracks.end()-1)->increase(100);
+            i->createFracture(result, this, 1000);
+            cout << "Got this far, somehow" << endl;
             return;
         }
     }
 }
 
-void Shape::addPoint(Point otherPoint)
+void Shape::addPoint(Point toAdd)
 {
-	points.push_back(otherPoint);
-	generateLinesFromPoints(&lines, points);
-}
-
-void generateLinesFromPoints(vector<Line> *lines, vector<Point> &points)
-{
-    lines->clear();
-    vector<Point>::iterator i;
-    vector<Point>::iterator next;
-    for (i = points.begin(); i != points.end(); ++i)
+    if (!lines.size())
     {
-        if ((i + 1) == points.end())
-        {
-            next = points.begin();
-        }
-        else
-        {
-            next = i + 1;
-        }
-        lines->push_back(Line(*i, *next));
+        lines.push_back(Line(toAdd, toAdd));
     }
+    else
+    {
+        (lines.end()-1)->point2 = toAdd;
+        lines.push_back(Line(toAdd, lines[0].point1));
+    }
+    (lines.end()-1)->index = lines.size()-1;
 }
 
 

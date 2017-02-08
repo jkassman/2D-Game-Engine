@@ -20,9 +20,45 @@ Line::Line(Point point1, Point point2)
     this->point2 = point2;
 }
 
+Line::Line(const Line & other)
+{
+    this->point1 = other.point1;
+    this->point2 = other.point2;
+    this->cracks = other.cracks;
+    this->index = other.index;
+}
+
+void Line::move(double distance, double degrees)
+{
+    point1.x += cos(degrees/180*M_PI)*distance;
+    point1.y += sin(degrees/180*M_PI)*distance;
+    point2.x += cos(degrees/180*M_PI)*distance;
+    point2.y += sin(degrees/180*M_PI)*distance;
+    vector<Crack>::iterator i;
+    for (i = cracks.begin(); i != cracks.end(); ++i)
+    {
+        if (i->isSplitting())
+        {
+            //i = cracks.erase(i);
+        }
+        else
+        {
+            i->move(distance, degrees);
+        }
+    }
+}
+
 void Line::draw() const
 {
     JDL::line(point1.x, point1.y, point2.x, point2.y);
+    vector<Crack>::const_iterator i;
+    for (i = cracks.begin(); i != cracks.end(); ++i)
+    {
+        if (!i->isSplitting())
+        {
+            i->draw();
+        }
+    }
 }
 
 double Line::length() const
@@ -211,4 +247,53 @@ bool Line::on(Point testPoint) const
 bool Line::operator==(const Line &other)
 {
     return ((point1 == other.point1) && (point2 == other.point2));
+}
+
+Line Line::operator=(const Line &other)
+{
+    point1 = other.point1;
+    point2 = other.point2;
+    index = other.index;
+    cracks = other.cracks;
+    return *this;
+}
+
+void Line::createFracture(Point startPoint, Shape *parentShape, double force)
+{
+    cracks.push_back(Crack(parentShape, startPoint, this));
+    cracks.back().increase(force);
+}
+
+//splitPoint must be on the line
+//will create two new lines: this will be point1->splitPoint,
+//newLine is splitPoint->point2
+void Line::split(Point splitPoint, Line *newLine)
+{
+    if (!on(splitPoint))
+    {
+        cerr << "The point to split is not on the line!" << endl;
+        return;
+    }
+    newLine->index = index;
+    newLine->point1 = splitPoint;
+    newLine->point2 = point2;
+    //split up the cracks:
+    vector<Crack>::iterator i = cracks.begin();
+    while (i != cracks.end())
+    {
+        if (i->isSplitting())
+        {
+            ++i;
+            continue;
+        }
+        if (newLine->on(i->startPoint()))
+        {
+            newLine->cracks.push_back(*i);
+            i = cracks.erase(i);
+        }
+        else
+        {
+            ++i;
+        }
+    }
 }

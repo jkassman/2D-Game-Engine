@@ -42,7 +42,9 @@ int main(int argc, char **argv)
                 }
                 break;
             }
+            cout << "Drawing" << endl;
             i->draw();
+            cout << "Finished Drawing" << endl;
         }
         JDL::flush();
 

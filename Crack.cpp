@@ -8,14 +8,15 @@
 
 using namespace std;
 
-Crack::Crack(Shape *parent, Point startPoint, Line startLine)
+Crack::Crack(Shape *parent, Point startPoint, Line *startLine)
 {
     parentShape = parent;
     this->startLine = startLine;
-    points.push_back(startPoint);
+    addPoint(startPoint);
+    splitting = false;
 }
 
-void Crack::increase(int force)
+void Crack::increase(double force)
 {
     //New Idea:
     //Create lines with random slopes starting from the given point until
@@ -26,30 +27,29 @@ void Crack::increase(int force)
     //If it does, split the shape apart.
     //    (If it intersects with multiple, choose the closest edge)
 
-    int radius = force;
     int numIntersects = 0;
+    bool startsOnLine = false;
+    
     vector<Point> intersectPoints;
+    vector<Line> intersectLines;
     Line fractureLine;
 
-    
-    //breaks at the end of the loop.
-    //the only way to stay in the loop is with continue
     while (true)
     {
         //create a random slope of the line
         int degree = rand() % 360;
         //double slope = tan(degree*M_PI / 180);
-        Point nextPoint(points[0].x + cos(degree*M_PI / 180) * radius, 
-                        points[0].y + sin(degree*M_PI / 180) * radius);
-        fractureLine = Line(*(points.end()-1), nextPoint);
+        Point startPoint = lines.back().point2;
+        Point nextPoint(startPoint.x + cos(degree*M_PI / 180) * force, 
+                        startPoint.y + sin(degree*M_PI / 180) * force);
+        fractureLine = Line(startPoint, nextPoint);
 
         //see how many lines fractureLine's ray intersects with.
         int numRay = parentShape->rayTrace(fractureLine);
         cout << "rayTrace returned: " << numRay;
         //if the start point of this fracture is on the crack's start line,
         //subtract one from the rayTrace count.
-        bool startsOnLine = false;
-        if (startLine.on(fractureLine.point1))
+        if (startLine->on(fractureLine.point1))
         {
             startsOnLine = true;
             numRay--;
@@ -58,78 +58,124 @@ void Crack::increase(int force)
         cout << endl;
 
         //if the number lines intersected is odd, it's in the right direction.
-        //else, choose a new fracture line (skip to the beginning of the loop.
-        if ((numRay % 2) == 0)
+        //else, repeat this process again.
+        if (numRay % 2) //if odd
         {
-            continue;
+            break;
         }
-
-        //so now we know the crack is in the right direction.
-        //But we need to see where it intersects with any line in the shape.
-        //    (If it doesn't intersect, we're done). 
-
-        //check if the fractureLine intersects with any lines in the shape
-        vector<Line>::iterator i;
-        Point intersectPoint;
-        for (i = parentShape->lines.begin(); i != parentShape->lines.end(); ++i)
-        {
-            if (i->intersects(fractureLine, &intersectPoint))
-            {
-                if (startsOnLine)
-                {
-                    //disregard intersects on the line the crack starts from
-                    if (startLine.on(intersectPoint))
-                    {
-                        continue;
-                    }
-                }
-                numIntersects++;
-                intersectPoints.push_back(intersectPoint);
-            }
-        }
-        break;
     }
+    //Now we know the crack is in the right direction.
+    //But we need to count how many lines it intersects
+    //(if it intersects no lines, we're done)
+    vector<Line>::iterator i;
+    Point intersectPoint;
+    for (i = parentShape->lines.begin(); i != parentShape->lines.end(); ++i)
+    {
+        if (i->intersects(fractureLine, &intersectPoint))
+        {
+            if (startsOnLine)
+            {
+                //disregard intersects on the line the crack starts from
+                if (startLine->on(intersectPoint))
+                {
+                    continue;
+                }
+            }
+            numIntersects++;
+            intersectPoints.push_back(intersectPoint);
+            intersectLines.push_back(*i);
+        }
+    }
+    
+    Line shapeLine;
 
     if (numIntersects > 0)
     {
         fractureLine.point2 = intersectPoints[0];
+        shapeLine = intersectLines[0];
         if (numIntersects > 1)
         {
             //if there are multiple intersects, choose the closest edge
             vector<Point>::iterator j;
+            vector<Line>::iterator shapeLineIter;
             for (j = intersectPoints.begin()+1; j != intersectPoints.end(); ++j)
             {
+                shapeLineIter++;
                 Line checkLine(fractureLine.point1, *j);
                 if (checkLine.length() < fractureLine.length())
                 {
                     fractureLine.point2 = *j;
+                    shapeLine = *shapeLineIter;
                 }
             }
         }
-        addPoint(fractureLine.point2);
-        split();
     }
+    lines[0].point2.print();
+    addPoint(fractureLine.point2);
+    lines[0].point2.print();
 
-    draw(); //TODO: consider whether or not this should be here
+    if (numIntersects != 0)
+    {
+        split(&shapeLine);
+    }
+    cout << "HERE" << endl;
+    //draw(); //TODO: consider whether or not this should be here
+    cout << "ERE" << endl;
 }
 
-void Crack::draw()
+void Crack::move(double distance, double degrees)
 {
     vector<Line>::iterator i;
     for (i = lines.begin(); i != lines.end(); ++i)
     {
-        i->draw();
+        i->move(distance, degrees);
     }
+}
+
+void Crack::draw() const
+{
+    vector<Line>::const_iterator i;
+    for (i = lines.begin(); i != lines.end(); ++i)
+    {
+        i->draw(); //oo this looks like a possible stack overflow :)
+        //(Look at Line's draw. it calls this draw).
+    }
+}
+
+Point Crack::startPoint()
+{
+    return lines[0].point1;
 }
 
 void Crack::addPoint(Point toAdd)
 {
-    points.push_back(toAdd);
-    generateLinesFromPoints(&lines, points);
+    cout << "size: " << lines.size() << endl;
+    if (!lines.size())
+    {
+        point = true;
+        lines.push_back(Line(toAdd, toAdd));
+    }
+    else if (point)
+    {
+        lines[0].point2 = toAdd;
+        point = false;
+    }
+    else
+    {
+        lines.push_back(Line(lines.back().point2, toAdd));
+    }
+    (lines.end() - 1)->index = lines.size()-1;
 }
 
-void Crack::split(Line &endLine)
+//the crack should be destroyed after a split
+void Crack::split(Line *endLine)
 {
+    //soo...the main problem might be we need to remove this crack from
+    //line's cracks. Which will leave this dangling.
+    //nah, let's just set a variable in here.
+    splitting = true;
+
+    lines[0].point2.print();
     //alright, so what to do here?
     //we have the start and end points of the crack...
     //so what to do..
@@ -152,4 +198,87 @@ void Crack::split(Line &endLine)
     //so there's one shape.
 
     //do the same thing expect going down endline's point1?
+
+    
+
+
+    //new new plan:
+    //split the shape by lines, create two new shapes from them.
+    //split startLine, split endLine, then throw the lines into shapes.
+    //DEBUG DRAW
+    draw();
+    
+    //endLine splits intersectPoint->point2.
+    Line start1, start2;
+    int start1Index, start2Index;
+    vector<Line> lines1, lines2;
+    
+    start1Index = endLine->index;
+    endLine->split(lines.back().point2, &start1);
+    //endLine is now endLine.point1->intersectPoint
+    
+    start2Index = startLine->index;
+    startLine->split(lines[0].point1, &start2);
+    //startLine is now startLine.point1->intersectPoint
+    
+    start1.index = 0;
+    start2.index = 0;
+    int newIndex = 1;
+
+    lines[0].point2.print();
+    lines1.push_back(start1);
+    lines[0].point2.print();
+    lines2.push_back(start2);
+    lines[0].point2.print();
+
+    //now we want all lines in the shape between start1 and startLine.
+    //let's assume indexes work.
+    //cout << "start indexes" << start1Index << "," << start2Index << endl;
+    
+    vector<Line>::iterator i = parentShape->lines.begin() + start1Index;
+    //Note: i++ works because shape is constructed point1->point2->point1 etc.
+    cout << "Pre first loop" << endl;
+    lines[0].point2.print();
+    cout << start2Index << endl;
+    //This should grab ~half the lines in the shape
+    while (i != (parentShape->lines.begin() + start2Index))
+    {
+        //lines[0].point2.print();
+        ++i;
+        if(i == parentShape->lines.end())
+        {
+            i = parentShape->lines.begin();
+        }
+        //i->point1.print();
+        i->index = newIndex;
+        newIndex++;
+
+        lines1.push_back(*i);
+        //i = parentShape->lines.erase(i);
+    }
+    cout << "Pre second loop, line size: " << lines.size() << endl;
+    //This copies all the lines in the crack
+    vector<Line>::iterator j;
+    
+    for (j = lines.begin(); j != lines.end(); ++j)
+    {
+        lines[0].point2.print();
+        cout << "wait, what?" << endl;
+        j->index = newIndex;
+        newIndex++;
+        lines1.push_back(*j);
+    }
+    cout << "Shape creation" << endl;
+    //ok, now create a shape out of all that. Move it away, too.
+    //parentShape->allShapes->push_back(Shape(lines1, parentShape->allShapes));
+    //parentShape->allShapes->back().move(150, 0);
+    Shape newShape(lines1, parentShape->allShapes);
+    newShape.move(150, 0);
+    newShape.draw();
+    cout << "Finished the split" << endl;
+}
+
+bool Crack::isSplitting() const
+{
+    return splitting;
 }
