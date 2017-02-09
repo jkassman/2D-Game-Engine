@@ -887,6 +887,13 @@ void JDL::circle(int x, int y, int r)
     gfx_circle(x, y, r);
 }
 
+//incompatible, doesn't return width;
+int JDL::text(int x, int y, const char *text)
+{
+    gfx_text(x, y, text);
+    return 1;
+}
+
 #endif
 int JDL::SCREEN_WIDTH = 800;
 int JDL::SCREEN_HEIGHT = 800;

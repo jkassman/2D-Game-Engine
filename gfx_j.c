@@ -200,7 +200,7 @@ int gfx_ysize()
 }
 
 /* Draw a string at point (x,y) */
-void gfx_text( int x, int y , char *text )
+void gfx_text( int x, int y , const char *text )
 {
         XDrawString(gfx_display, gfx_window, gfx_gc, x, y, text, strlen(text));
 }

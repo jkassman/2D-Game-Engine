@@ -5,6 +5,8 @@
 #include <iostream>
 #include <math.h>
 
+#include <stdio.h>
+
 using namespace std;
 
 #define CWR 2
@@ -52,6 +54,11 @@ void Line::draw() const
 {
     JDL::line(point1.x, point1.y, point2.x, point2.y);
     vector<Crack>::const_iterator i;
+    double dx = point2.x - point1.x;
+    double dy = point2.y - point1.y;
+    char toPrint[42];
+    sprintf(toPrint, "%d", index);
+    JDL::text(point1.x + dx/2, point1.y + dy/2, toPrint);
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {
         if (!i->isSplitting())
@@ -277,6 +284,8 @@ void Line::split(Point splitPoint, Line *newLine)
     newLine->index = index;
     newLine->point1 = splitPoint;
     newLine->point2 = point2;
+
+    point2 = splitPoint;
     //split up the cracks:
     vector<Crack>::iterator i = cracks.begin();
     while (i != cracks.end())

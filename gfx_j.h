@@ -53,7 +53,7 @@ void gfx_flush();
 
 /* Display a string at (x,y) */
 /* example of usage:  gfx_text(x, y, "hi there!"); */
-void gfx_text( int x, int y , char *text );
+void gfx_text( int x, int y , const char *text );
 
 void gfx_ellipse( int xCtr, int yCtr, int r1, int r2 );
 

@@ -110,17 +110,15 @@ void Crack::increase(double force)
             }
         }
     }
-    lines[0].point2.print();
+    //lines[0].point2.print();
     addPoint(fractureLine.point2);
-    lines[0].point2.print();
+    //lines[0].point2.print();
 
     if (numIntersects != 0)
     {
         split(&shapeLine);
     }
-    cout << "HERE" << endl;
     //draw(); //TODO: consider whether or not this should be here
-    cout << "ERE" << endl;
 }
 
 void Crack::move(double distance, double degrees)
@@ -175,7 +173,6 @@ void Crack::split(Line *endLine)
     //nah, let's just set a variable in here.
     splitting = true;
 
-    lines[0].point2.print();
     //alright, so what to do here?
     //we have the start and end points of the crack...
     //so what to do..
@@ -205,8 +202,6 @@ void Crack::split(Line *endLine)
     //new new plan:
     //split the shape by lines, create two new shapes from them.
     //split startLine, split endLine, then throw the lines into shapes.
-    //DEBUG DRAW
-    draw();
     
     //endLine splits intersectPoint->point2.
     Line start1, start2;
@@ -225,11 +220,8 @@ void Crack::split(Line *endLine)
     start2.index = 0;
     int newIndex = 1;
 
-    lines[0].point2.print();
     lines1.push_back(start1);
-    lines[0].point2.print();
     lines2.push_back(start2);
-    lines[0].point2.print();
 
     //now we want all lines in the shape between start1 and startLine.
     //let's assume indexes work.
@@ -243,13 +235,11 @@ void Crack::split(Line *endLine)
     //This should grab ~half the lines in the shape
     while (i != (parentShape->lines.begin() + start2Index))
     {
-        //lines[0].point2.print();
         ++i;
         if(i == parentShape->lines.end())
         {
             i = parentShape->lines.begin();
         }
-        //i->point1.print();
         i->index = newIndex;
         newIndex++;
 
@@ -262,8 +252,6 @@ void Crack::split(Line *endLine)
     
     for (j = lines.begin(); j != lines.end(); ++j)
     {
-        lines[0].point2.print();
-        cout << "wait, what?" << endl;
         j->index = newIndex;
         newIndex++;
         lines1.push_back(*j);
