@@ -7,16 +7,16 @@
 #include "Shape.hpp"
 #include "Point.hpp"
 
-class Shape;
-class Crack;
+//class Shape;
+//class Crack;
 
 //A Line may have many cracks
-//at some point, consider this for efficiency purposes
-//lines get passed around a lot. Maybe use those darn &s.
 class Line
 {
 private:
-    std::vector<Crack> cracks;
+    std::vector<Crack*> cracks;
+
+    //void getImpacts(const Point &impactPoint); 
 
 public:
     Point point1;
@@ -26,7 +26,7 @@ public:
     Line();
     Line(Point point1, Point point2);
 
-    Line(const Line & other);
+    //Line(const Line & other);
     void move(double distance, double degrees);
     void draw() const;
     double length() const;
@@ -39,11 +39,16 @@ public:
     bool on(Point testPoint, double radius, Point *resultPoint) const;
     bool on(Point testPoint) const;
     bool operator==(const Line &other);
-    Line operator=(const Line &other);
+    //Line operator=(const Line &other);
 
     void split(Point splitPoint, Line *newLine);
 
-    void createFracture(Point startPoint, Shape *parentShape, double force);
+    //void createFracture(Point startPoint, Shape *parentShape, double force);
+    //int numImpacts(Point impactPoint); 
+
+    //eventually, use the force to calculate how many new cracks should
+    //be created, if any.
+    //or just never create a new crack; keep to some density.
     void increaseCracks(Point impactPoint, double force);
     
 };

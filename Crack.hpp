@@ -2,21 +2,20 @@
 #define CRACK_HPP
 
 #include "Point.hpp"
-#include "Shape.hpp"
 
 #include <vector>
 
-class Line;
-class Shape;
+//class Line;
+//class Shape;
 
 class Crack
 {
 private:
-    std::vector<Line> lines;
+    std::vector<Line*> lines;
     Line *startLine;
-    Shape *parentShape;
+    //Shape *parentShape;
     bool point;
-    bool splitting;
+    //bool splitting;
 
     //modifies the current shape and creates a new one.
     //called by increase when the crack intersects a line
@@ -24,7 +23,7 @@ private:
     void addPoint(Point toAdd);
     
 public:
-    Crack(Shape *parent, Point startPoint, Line *startLine);
+    Crack(Point startPoint, Line *startLine);
     
     //force is a measure of how much the crack should increase in length
     void increase(double force);
@@ -32,7 +31,6 @@ public:
 
     void move(double distance, double degrees);
     void draw() const;
-    bool isSplitting() const;
 };
 
 #endif

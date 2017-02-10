@@ -21,14 +21,14 @@ Line::Line(Point point1, Point point2)
     this->point1 = point1;
     this->point2 = point2;
 }
-
+/*
 Line::Line(const Line & other)
 {
     this->point1 = other.point1;
     this->point2 = other.point2;
     this->cracks = other.cracks;
     this->index = other.index;
-}
+    }*/
 
 void Line::move(double distance, double degrees)
 {
@@ -39,14 +39,7 @@ void Line::move(double distance, double degrees)
     vector<Crack>::iterator i;
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {
-        if (i->isSplitting())
-        {
-            //i = cracks.erase(i);
-        }
-        else
-        {
-            i->move(distance, degrees);
-        }
+        *(i)->move(distance, degrees);
     }
 }
 
@@ -61,10 +54,7 @@ void Line::draw() const
     JDL::text(point1.x + dx/2, point1.y + dy/2, toPrint);
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {
-        if (!i->isSplitting())
-        {
-            i->draw();
-        }
+        *(i)->draw();
     }
 }
 
@@ -256,6 +246,7 @@ bool Line::operator==(const Line &other)
     return ((point1 == other.point1) && (point2 == other.point2));
 }
 
+/*
 Line Line::operator=(const Line &other)
 {
     point1 = other.point1;
@@ -267,6 +258,13 @@ Line Line::operator=(const Line &other)
 
 void Line::createFracture(Point startPoint, Shape *parentShape, double force)
 {
+    cracks.push_back(Crack(parentShape, startPoint, this));
+    cracks.back().increase(force);
+    }
+*/
+void Line::increaseCracks(Point impactPoint, double force)
+{
+    //eventually, increase all cracks that are near.
     cracks.push_back(Crack(parentShape, startPoint, this));
     cracks.back().increase(force);
 }
@@ -287,15 +285,10 @@ void Line::split(Point splitPoint, Line *newLine)
 
     point2 = splitPoint;
     //split up the cracks:
-    vector<Crack>::iterator i = cracks.begin();
+    vector<Crack*>::iterator i = cracks.begin();
     while (i != cracks.end())
     {
-        if (i->isSplitting())
-        {
-            ++i;
-            continue;
-        }
-        if (newLine->on(i->startPoint()))
+        if (newLine->on(*(i)->startPoint()))
         {
             newLine->cracks.push_back(*i);
             i = cracks.erase(i);

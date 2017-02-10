@@ -25,7 +25,7 @@ Shape::Shape(vector<Point> givenPoints, vector<Shape> *allShapes)
     }
 }
 
-Shape::Shape(vector<Line> &givenLines, vector<Shape> *allShapes)
+Shape::Shape(vector<Line*> &givenLines, vector<Shape> *allShapes)
 {
     this->allShapes = allShapes;
     this->lines = givenLines;
@@ -38,33 +38,32 @@ bool Shape::inside(Point toTest)
 
 void Shape::move(double distance, double degrees)
 {
-    vector<Line>::iterator i;
+    vector<Line*>::iterator i;
     for (i = lines.begin(); i != lines.end(); ++i)
     {
-        i->move(distance, degrees);
+        (*i)->move(distance, degrees);
     }
 }
 
 void Shape::draw()
 {
-    vector<Line>::iterator i;
+    vector<Line*>::iterator i;
     for (i = lines.begin(); i != lines.end(); ++i)
     {
-        i->draw();
+        (*i)->draw();
     }
 }
 
 void Shape::fractureAt(Point clickPoint)
 {
-    vector<Line>::iterator i;
+    vector<Line*>::iterator i;
     for (i = lines.begin(); i != lines.end(); ++i)
     {
         Point result;
-        if (i->on(clickPoint, 10, &result))
+        if ((*i)->on(clickPoint, 10, &result))
         {
             //JDL::circle(result.x, result.y, 8);
-            i->createFracture(result, this, 1000);
-            cout << "Got this far, somehow" << endl;
+            (*i)->createFracture(result, this, 1000);
             return;
         }
     }
@@ -74,14 +73,14 @@ void Shape::addPoint(Point toAdd)
 {
     if (!lines.size())
     {
-        lines.push_back(Line(toAdd, toAdd));
+        lines.push_back(new Line(toAdd, toAdd));
     }
     else
     {
-        (lines.end()-1)->point2 = toAdd;
-        lines.push_back(Line(toAdd, lines[0].point1));
+        lines.back()->point2 = toAdd;
+        lines.push_back(new Line(toAdd, lines[0]->point1));
     }
-    (lines.end()-1)->index = lines.size()-1;
+    lines.back()->index = lines.size()-1;
 }
 
 
@@ -91,12 +90,12 @@ int Shape::rayTrace(Line &ray)
 {
     //check to see how many lines in the shape the ray intersects with
     Point intersectPoint;
-    vector<Line>::iterator i;
+    vector<Line*>::iterator i;
     int numIntersects = 0;
     vector<Point> intersectPoints;
     for (i = lines.begin(); i != lines.end(); ++i)
     {
-        if (ray.rayIntersects(*i, &intersectPoint))
+        if (ray.rayIntersects(**i, &intersectPoint))
         {
             intersectPoints.push_back(intersectPoint);
             numIntersects++;

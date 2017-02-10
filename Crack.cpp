@@ -8,9 +8,8 @@
 
 using namespace std;
 
-Crack::Crack(Shape *parent, Point startPoint, Line *startLine)
+Crack::Crack(Point startPoint, Line *startLine)
 {
-    parentShape = parent;
     this->startLine = startLine;
     addPoint(startPoint);
     splitting = false;

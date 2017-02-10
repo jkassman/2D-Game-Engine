@@ -1,0 +1,33 @@
+Switch everything over to hold pointers to lines.
+(Cracks and shapes should have vectors of line pointers)
+
+Change split from crack to shape
+
+Add destructors!
+
+Make it compile
+
+add consts
+
+Fix bugs
+
+
+Overall structure:
+Shape is defined by a bunch of lines; it has a vector of pointers to lines.
+    -This is because lines get moved around from shape to shape when spliting.
+
+Each line has a vector of many pointers to crack.
+
+On a click, the Shape first discovers which (if any) line was clicked.
+   -This function is fractureAt
+It then should inform the line(s) that it was clicked.
+   FUTURE TODO: multiple lines, + don't default to making a new crack.
+The line then calls crack's increase() function. (or makes a new crack)
+
+if increase() returns nonzero, that indicates that the crack has spread
+across the entire shape. Therefore, the line's function should also return
+nonzero.
+
+This signals the shape that it has to split.
+The shape then calls its split function.
+It somehow has to put the new shape in the drawing queue.
