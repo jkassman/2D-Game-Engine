@@ -13,7 +13,7 @@
 //A shape is just a collection of LINES
 class Shape
 {
-    //friend class Crack;
+    friend class Crack;
 
 private:
     std::vector<Line*> lines;
@@ -33,7 +33,8 @@ public:
     void addPoint(Point toAdd);
     void fractureAt(Point clickPoint);
 
-    void split(Crack *crack);
+    void split(int indexA1, char posOrNegA, int indexA2, const std::vector<Line*> &CrackA,
+               int indexB1, char posOrNegB, int indexB2, const std::vector<Line*> &CrackB);
 };
 
 #endif

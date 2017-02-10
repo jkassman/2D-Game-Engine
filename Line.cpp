@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <iostream>
 #include <math.h>
+#include <string>
 
 #include <stdio.h>
 
@@ -36,25 +37,26 @@ void Line::move(double distance, double degrees)
     point1.y += sin(degrees/180*M_PI)*distance;
     point2.x += cos(degrees/180*M_PI)*distance;
     point2.y += sin(degrees/180*M_PI)*distance;
-    vector<Crack>::iterator i;
+    vector<Crack*>::iterator i;
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {
-        *(i)->move(distance, degrees);
+        (*i)->move(distance, degrees);
     }
 }
 
 void Line::draw() const
 {
-    JDL::line(point1.x, point1.y, point2.x, point2.y);
-    vector<Crack>::const_iterator i;
+    JDL::line(JDL::roundi(point1.x), JDL::roundi(point1.y),
+              JDL::roundi(point2.x), JDL::roundi(point2.y));
+    vector<Crack*>::const_iterator i;
     double dx = point2.x - point1.x;
     double dy = point2.y - point1.y;
-    char toPrint[42];
-    sprintf(toPrint, "%d", index);
-    JDL::text(point1.x + dx/2, point1.y + dy/2, toPrint);
+    JDL::text(JDL::roundi(point1.x + dx/2), 
+              JDL::roundi(point1.y + dy/2), 
+              to_string(index).c_str());
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {
-        *(i)->draw();
+        (*i)->draw();
     }
 }
 
@@ -262,11 +264,11 @@ void Line::createFracture(Point startPoint, Shape *parentShape, double force)
     cracks.back().increase(force);
     }
 */
-void Line::increaseCracks(Point impactPoint, double force)
+void Line::increaseCracks(Point impactPoint, Shape *parentShape, double force)
 {
     //eventually, increase all cracks that are near.
-    cracks.push_back(Crack(parentShape, startPoint, this));
-    cracks.back().increase(force);
+    cracks.push_back(new Crack(parentShape, impactPoint, this));
+    cracks.back()->increase(force);
 }
 
 //splitPoint must be on the line
@@ -288,7 +290,7 @@ void Line::split(Point splitPoint, Line *newLine)
     vector<Crack*>::iterator i = cracks.begin();
     while (i != cracks.end())
     {
-        if (newLine->on(*(i)->startPoint()))
+        if (newLine->on((*i)->startPoint()))
         {
             newLine->cracks.push_back(*i);
             i = cracks.erase(i);

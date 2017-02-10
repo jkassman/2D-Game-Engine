@@ -8,7 +8,7 @@
 #define MIDWAY_MOVE_KEY SDL_SCANCODE_M
 
 
-//#define JDL_USE_SDL
+#define JDL_USE_SDL
 
 #ifdef JDL_USE_SDL
 #include <SDL.h>
@@ -28,9 +28,7 @@ public:
 	JDL();
 	~JDL();
 	
-        static const double PRECISION = 0.01;
-
-        static bool doublesEqual(double d1, double d2);
+        
 	static bool init(int width, int height, const char* title);
 	static void close();
 #ifdef JDL_USE_SDL
@@ -56,6 +54,11 @@ public:
 	static void getDouble(double &toChange, int x, int y);
 	static void fillPoly(std::vector<int> toDraw);
 	static bool insidePoly(const std::vector<int> & polyPoints, double x, double y); //PolyPoints has positive y as up and positive x as right, and 0,0 inside
+
+	//basic utility functions:
+    static const double PRECISION;
+	static int roundi(double toRound);
+	static bool doublesEqual(double d1, double d2);
 
 private:
 	//the following functions are used only in getInt and getDouble. Possibly bad form, but I thought it was better than typing the same thing 10 times.

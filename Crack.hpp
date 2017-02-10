@@ -1,19 +1,21 @@
 #ifndef CRACK_HPP
 #define CRACK_HPP
 
+#include "Shape.hpp"
+#include "Line.hpp"
 #include "Point.hpp"
 
 #include <vector>
 
-//class Line;
-//class Shape;
+class Line;
+class Shape;
 
 class Crack
 {
 private:
     std::vector<Line*> lines;
     Line *startLine;
-    //Shape *parentShape;
+    Shape *parentShape;
     bool point;
     //bool splitting;
 
@@ -23,7 +25,7 @@ private:
     void addPoint(Point toAdd);
     
 public:
-    Crack(Point startPoint, Line *startLine);
+    Crack(Shape *parentShape, Point startPoint, Line *startLine);
     
     //force is a measure of how much the crack should increase in length
     void increase(double force);

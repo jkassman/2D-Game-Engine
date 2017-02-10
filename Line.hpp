@@ -3,12 +3,12 @@
 
 #include <vector>
 
-#include "Crack.hpp"
 #include "Shape.hpp"
+#include "Crack.hpp"
 #include "Point.hpp"
 
-//class Shape;
-//class Crack;
+class Shape;
+class Crack;
 
 //A Line may have many cracks
 class Line
@@ -49,7 +49,7 @@ public:
     //eventually, use the force to calculate how many new cracks should
     //be created, if any.
     //or just never create a new crack; keep to some density.
-    void increaseCracks(Point impactPoint, double force);
+    void increaseCracks(Point impactPoint, Shape *parentShape, double force);
     
 };
 

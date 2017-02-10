@@ -15,7 +15,7 @@ public:
     void print() const;
     Point operator=(const Point &other);
     bool operator==(const Point &other);
-    int operator[](char coord);
+    double operator[](char coord);
     bool operator<(const Point &other) const;
 };
 

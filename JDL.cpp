@@ -10,6 +10,8 @@
 #include "gfx_j.h"
 #endif
 
+const double JDL::PRECISION = 0.01;
+
 JDL::JDL()
 {
 }
@@ -28,6 +30,17 @@ bool JDL::doublesEqual(double d1, double d2)
     return false;
 }
 
+int JDL::roundi(double toRound)
+{
+    if (toRound < 0)
+    {
+        return (int) (toRound - 0.5);
+    }
+    else
+    {
+        return (int) (toRound + 0.5);
+    }
+}
 #ifdef JDL_USE_SDL
 bool JDL::init(int width, int height, const char* title)
 {

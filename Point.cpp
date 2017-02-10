@@ -35,7 +35,7 @@ Point Point::operator=(const Point &other)
     return *this;
 }
 
-int Point::operator[](char coord)
+double Point::operator[](char coord)
 {
     if ((coord == 0) || (coord == 'x'))
     {

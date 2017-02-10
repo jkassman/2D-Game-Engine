@@ -63,7 +63,7 @@ void Shape::fractureAt(Point clickPoint)
         if ((*i)->on(clickPoint, 10, &result))
         {
             //JDL::circle(result.x, result.y, 8);
-            (*i)->createFracture(result, this, 1000);
+            (*i)->increaseCracks(result, this, 1000);
             return;
         }
     }
@@ -117,4 +117,78 @@ int Shape::rayTrace(Line &ray)
     }
 
     return numIntersects;
+}
+
+
+//the crack should be destroyed after a split
+void Shape::split(int indexA1, char posOrNegA, int indexA2, const std::vector<Line*> &CrackA,
+                  int indexB1, char posOrNegB, int indexB2, const std::vector<Line*> &CrackB)
+{
+    /*
+    //new new plan:
+    //split the shape by lines, create two new shapes from them.
+    //split startLine, split endLine, then throw the lines into shapes.
+
+    //endLine splits intersectPoint->point2.
+    Line start1, start2;
+    int start1Index, start2Index;
+    vector<Line> lines1, lines2;
+
+    start1Index = endLine->index;
+    endLine->split(lines.back().point2, &start1);
+    //endLine is now endLine.point1->intersectPoint
+
+    start2Index = startLine->index;
+    startLine->split(lines[0].point1, &start2);
+    //startLine is now startLine.point1->intersectPoint
+
+    start1.index = 0;
+    start2.index = 0;
+    int newIndex = 1;
+
+    lines1.push_back(start1);
+    lines2.push_back(start2);
+
+    //now we want all lines in the shape between start1 and startLine.
+    //let's assume indexes work.
+    //cout << "start indexes" << start1Index << "," << start2Index << endl;
+
+    vector<Line>::iterator i = parentShape->lines.begin() + start1Index;
+    //Note: i++ works because shape is constructed point1->point2->point1 etc.
+    cout << "Pre first loop" << endl;
+    lines[0].point2.print();
+    cout << start2Index << endl;
+    //This should grab ~half the lines in the shape
+    while (i != (parentShape->lines.begin() + start2Index))
+    {
+        ++i;
+        if (i == parentShape->lines.end())
+        {
+            i = parentShape->lines.begin();
+        }
+        i->index = newIndex;
+        newIndex++;
+
+        lines1.push_back(*i);
+        //i = parentShape->lines.erase(i);
+    }
+    cout << "Pre second loop, line size: " << lines.size() << endl;
+    //This copies all the lines in the crack
+    vector<Line>::iterator j;
+
+    for (j = lines.begin(); j != lines.end(); ++j)
+    {
+        j->index = newIndex;
+        newIndex++;
+        lines1.push_back(*j);
+    }
+    cout << "Shape creation" << endl;
+    //ok, now create a shape out of all that. Move it away, too.
+    //parentShape->allShapes->push_back(Shape(lines1, parentShape->allShapes));
+    //parentShape->allShapes->back().move(150, 0);
+    Shape newShape(lines1, parentShape->allShapes);
+    newShape.move(150, 0);
+    newShape.draw();
+    cout << "Finished the split" << endl;
+    */
 }

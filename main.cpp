@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-#ifdef SDL_USE_JDL
+#ifdef JDL_USE_SDL
 #include <Windows.h>
 #else
 #include <unistd.h>
