@@ -170,4 +170,9 @@ void Crack::split(Line *endLine)
     //    The cracks will not be duplicated, but one set of lines gets one crack
     //    and one set of lines gets another).
     //After that, it calls Shape's split.
+
+
+    //idea:
+    //parentShape->drawQueue->push(parentShape->split(startLine, endLine, lines1, '+');
+    //parentShape->drawQueue->push(parentShape->split(startLine, endLine, lines2, '-');
 }
