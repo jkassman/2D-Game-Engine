@@ -1,6 +1,8 @@
 #include "Line.hpp"
 #include "JDL.hpp"
 
+#define _USE_MATH_DEFINES
+
 #include <algorithm>
 #include <iostream>
 #include <math.h>
@@ -10,7 +12,7 @@
 
 using namespace std;
 
-#define CWR 2
+//#define CWR 2
 
 Line::Line()
 {
@@ -22,14 +24,26 @@ Line::Line(Point point1, Point point2)
     this->point1 = point1;
     this->point2 = point2;
 }
-/*
+
+Line::Line(Point point1, double length, double direction)
+{
+    this->point1 = point1;
+    this->point2 = Point(point1.x + cos(direction*M_PI / 180) * length, 
+                         point1.y + sin(direction*M_PI / 180) * length);
+}
+
 Line::Line(const Line & other)
 {
     this->point1 = other.point1;
     this->point2 = other.point2;
-    this->cracks = other.cracks;
     this->index = other.index;
-    }*/
+
+    vector<Crack*>::iterator i;
+    for (i = cracks.begin(); i != cracks.end(); ++i)
+    {
+        this->cracks.push_back(new Crack(**i));
+    }  
+}
 
 void Line::move(double distance, double degrees)
 {
@@ -44,16 +58,27 @@ void Line::move(double distance, double degrees)
     }
 }
 
+#ifndef JDL_USE_SDL
+string to_string(int lazy)
+{
+    char temp[100];
+    sprintf(temp, "%d", lazy);
+    return string(temp);
+}
+#endif
+
 void Line::draw() const
 {
     JDL::line(JDL::roundi(point1.x), JDL::roundi(point1.y),
               JDL::roundi(point2.x), JDL::roundi(point2.y));
-    vector<Crack*>::const_iterator i;
+/*
     double dx = point2.x - point1.x;
     double dy = point2.y - point1.y;
     JDL::text(JDL::roundi(point1.x + dx/2), 
               JDL::roundi(point1.y + dy/2), 
               to_string(index).c_str());
+*/
+    vector<Crack*>::const_iterator i;
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {
         (*i)->draw();
@@ -267,8 +292,38 @@ void Line::createFracture(Point startPoint, Shape *parentShape, double force)
 void Line::increaseCracks(Point impactPoint, Shape *parentShape, double force)
 {
     //eventually, increase all cracks that are near.
-    cracks.push_back(new Crack(parentShape, impactPoint, this));
-    cracks.back()->increase(force);
+
+    //for now, incrase any crack within a certain radius.
+    int numCracksIncreased = 0;
+    vector<Crack*>::iterator i = cracks.begin();
+    while (i != cracks.end())
+    {
+        if ((*i)->startPoint().near(impactPoint, 10))
+        {
+            numCracksIncreased++;
+            if ((*i)->increase(force))
+            {
+                i = cracks.erase(i);
+            }
+            else
+            {
+                ++i;
+            }
+        }
+        else
+        {
+            ++i;
+        }
+    }
+    if (numCracksIncreased == 0)
+    {
+        cracks.push_back(new Crack(parentShape, impactPoint, this));
+        if (cracks.back()->increase(force))
+        {
+            cracks.pop_back();
+        }
+        
+    }
 }
 
 //splitPoint must be on the line
@@ -290,14 +345,31 @@ void Line::split(Point splitPoint, Line *newLine)
     vector<Crack*>::iterator i = cracks.begin();
     while (i != cracks.end())
     {
-        if (newLine->on((*i)->startPoint()))
+        if (on((*i)->startPoint()))
+        {
+            ++i;
+        }
+        else
         {
             newLine->cracks.push_back(*i);
             i = cracks.erase(i);
         }
-        else
-        {
-            ++i;
-        }
     }
+}
+
+
+void Line::switchPoints()
+{
+    Point temp = point1;
+    point1 = point2;
+    point2 = temp;
+}
+
+double Line::getDirection()
+{
+    double direction;
+    direction = JDL::calculateTheta(point2.x-point1.x, point2.y-point1.y);
+    direction *= 180/M_PI;
+    direction *= -1; //not sure why this is needed...
+    return direction;
 }

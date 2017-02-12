@@ -17,6 +17,8 @@ public:
     bool operator==(const Point &other);
     double operator[](char coord);
     bool operator<(const Point &other) const;
+
+    bool near(const Point &other, double radius);
 };
 
 #endif

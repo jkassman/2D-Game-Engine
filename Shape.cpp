@@ -5,10 +5,11 @@
 #include <algorithm>
 
 using namespace std;
-
-Shape::Shape(vector<Point> givenPoints, vector<Shape> *allShapes)
+Shape::Shape(vector<Point> givenPoints, vector<Shape*> *toDraw)
 {
-    this->allShapes = allShapes;
+    this->speed = 0;
+    this->direction = 0;
+    this->toDraw = toDraw;
     vector<Point>::iterator i;
     vector<Point>::iterator next;
     for (i = givenPoints.begin(); i != givenPoints.end(); ++i)
@@ -25,9 +26,11 @@ Shape::Shape(vector<Point> givenPoints, vector<Shape> *allShapes)
     }
 }
 
-Shape::Shape(vector<Line*> &givenLines, vector<Shape> *allShapes)
+Shape::Shape(vector<Line*> &givenLines, vector<Shape*> *toDraw)
 {
-    this->allShapes = allShapes;
+    this->speed = 0;
+    this->direction = 0;
+    this->toDraw = toDraw;
     this->lines = givenLines;
 }
 
@@ -43,6 +46,21 @@ void Shape::move(double distance, double degrees)
     {
         (*i)->move(distance, degrees);
     }
+}
+
+void Shape::move()
+{
+    vector<Line*>::iterator i;
+    for (i = lines.begin(); i != lines.end(); ++i)
+    {
+        (*i)->move(speed, direction);
+    }
+}
+
+void Shape::setSpeed(double speed, double degrees)
+{
+    this->speed = speed;
+    this->direction = degrees;
 }
 
 void Shape::draw()
@@ -63,7 +81,7 @@ void Shape::fractureAt(Point clickPoint)
         if ((*i)->on(clickPoint, 10, &result))
         {
             //JDL::circle(result.x, result.y, 8);
-            (*i)->increaseCracks(result, this, 1000);
+            (*i)->increaseCracks(result, this, 21);
             return;
         }
     }
@@ -121,29 +139,59 @@ int Shape::rayTrace(Line &ray)
 
 
 //the crack should be destroyed after a split
-void Shape::split(int indexA1, char posOrNegA, int indexA2, const std::vector<Line*> &CrackA,
-                  int indexB1, char posOrNegB, int indexB2, const std::vector<Line*> &CrackB)
+void Shape::split(Line *startLine, Line *endLine,
+                  vector<Line*> &splitLines)
 {
-    /*
     //new new plan:
     //split the shape by lines, create two new shapes from them.
     //split startLine, split endLine, then throw the lines into shapes.
 
     //endLine splits intersectPoint->point2.
-    Line start1, start2;
+    Line *start1 = new Line();
+    Line *start2 = new Line();
     int start1Index, start2Index;
-    vector<Line> lines1, lines2;
+    vector<Line*> lines1, lines2;
+
+    //TODO: deal with case startLine == endLine
 
     start1Index = endLine->index;
-    endLine->split(lines.back().point2, &start1);
-    //endLine is now endLine.point1->intersectPoint
-
     start2Index = startLine->index;
-    startLine->split(lines[0].point1, &start2);
-    //startLine is now startLine.point1->intersectPoint
-
-    start1.index = 0;
-    start2.index = 0;
+    if (startLine == endLine)
+    {
+        Point farPoint, closePoint; //far or close to startLine->point1
+        Line firstSplit(startLine->point1, splitLines[0]->point1);
+        Line secondSplit(startLine->point1, splitLines.back()->point2);
+        if (firstSplit.length() > secondSplit.length())
+        {
+            farPoint = splitLines[0]->point1;
+            closePoint = splitLines.back()->point2;
+        }
+        else
+        {
+            farPoint = splitLines.back()->point2;
+            closePoint = splitLines[0]->point1;
+        }
+        
+        startLine->split(closePoint, start2);
+        cout << "context" << endl;
+        //startline: point1->closePoint
+        //start2: closePoint->point2.
+        
+        start2->split(farPoint, start1);
+        cout << "context" << endl;
+        //start2: closePoint->farPoint
+        //start1: farPoint->point2
+    }
+    else
+    {
+        endLine->split(splitLines.back()->point2, start1);
+        //endLine is now endLine.point1->intersectPoint
+        
+        startLine->split(splitLines[0]->point1, start2);
+        //startLine is now startLine.point1->intersectPoint
+    }
+    start1->index = 0;
+    start2->index = 0;
     int newIndex = 1;
 
     lines1.push_back(start1);
@@ -153,42 +201,101 @@ void Shape::split(int indexA1, char posOrNegA, int indexA2, const std::vector<Li
     //let's assume indexes work.
     //cout << "start indexes" << start1Index << "," << start2Index << endl;
 
-    vector<Line>::iterator i = parentShape->lines.begin() + start1Index;
+    vector<Line*>::iterator i = this->lines.begin() + start1Index;
     //Note: i++ works because shape is constructed point1->point2->point1 etc.
-    cout << "Pre first loop" << endl;
-    lines[0].point2.print();
-    cout << start2Index << endl;
+
+
     //This should grab ~half the lines in the shape
-    while (i != (parentShape->lines.begin() + start2Index))
+    do 
     {
         ++i;
-        if (i == parentShape->lines.end())
+        if (i == this->lines.end())
         {
-            i = parentShape->lines.begin();
+            i = this->lines.begin();
         }
-        i->index = newIndex;
+
+        (*i)->index = newIndex;
         newIndex++;
-
         lines1.push_back(*i);
-        //i = parentShape->lines.erase(i);
-    }
-    cout << "Pre second loop, line size: " << lines.size() << endl;
-    //This copies all the lines in the crack
-    vector<Line>::iterator j;
+    } while (i != this->lines.begin() + start2Index);
 
-    for (j = lines.begin(); j != lines.end(); ++j)
+    //re-assign all the lines in the crack
+    vector<Line*>::iterator j;
+
+    for (j = splitLines.begin(); j != splitLines.end(); ++j)
     {
-        j->index = newIndex;
+        (*j)->index = newIndex;
         newIndex++;
         lines1.push_back(*j);
     }
-    cout << "Shape creation" << endl;
+
+    //finished with lines1!
+    newIndex = 1;
+
+    //now create lines2.
+    i = this->lines.begin() + start2Index;
+    while (i != this->lines.begin() + start1Index)
+    {
+        ++i;
+        if (i == this->lines.end())
+        {
+            i = this->lines.begin();
+        }
+
+        (*i)->index = newIndex;
+        newIndex++;
+        lines2.push_back(*i);
+    }
+
+    //actually copy all the lines in the crack
+    //we should reverse them as well.
+    vector<Line*>::reverse_iterator r;
+    for (r = splitLines.rbegin(); r != splitLines.rend(); ++r)
+    {
+        lines2.push_back(new Line(**r));
+        lines2.back()->index = newIndex;
+        newIndex++;
+
+        //switch point1 and point2.
+        lines2.back()->switchPoints();
+    }
+
+    this->lines.clear();
+    this->lines.assign(lines2.begin(), lines2.end());
+
     //ok, now create a shape out of all that. Move it away, too.
-    //parentShape->allShapes->push_back(Shape(lines1, parentShape->allShapes));
-    //parentShape->allShapes->back().move(150, 0);
-    Shape newShape(lines1, parentShape->allShapes);
-    newShape.move(150, 0);
-    newShape.draw();
-    cout << "Finished the split" << endl;
+    toDraw->push_back(new Shape(lines1, this->toDraw));
+    int newDirection = 0;
+/*
+    if (this->direction == 0)
+    {
+        newDirection = 180;
+    }
+*/
+    Line crackDirection(splitLines[0]->point1, splitLines.back()->point2);
+    newDirection = crackDirection.getDirection() - 90;
+    toDraw->back()->setSpeed(0.42 + this->speed, newDirection);
+                     
+
+    /*
+    //DEBUG DRAW:
+    char garbage;
+    vector<Line*>::iterator debug;
+    JDL::clear();
+    for (debug = lines1.begin(); debug != lines1.end(); ++debug)
+    {
+        cin >> garbage;
+        (*debug)->draw();
+        JDL::flush();
+    }
+
+    for (debug = lines2.begin(); debug != lines2.end(); ++debug)
+    {
+        cin >> garbage;
+        (*debug)->draw();
+        JDL::flush();
+    }
+
     */
+    cout << "Finished the split" << endl;
 }

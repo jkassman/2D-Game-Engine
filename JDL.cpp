@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <iostream>
+#include <math.h>
+
+#define _USE_MATH_DEFINES
 
 #include "JDL.hpp"
 
@@ -41,6 +44,43 @@ int JDL::roundi(double toRound)
         return (int) (toRound + 0.5);
     }
 }
+
+
+//calculates the angle between the given point and the x axis.
+double JDL::calculateTheta(double x, double y) {
+    switch (location(x,y)) {
+    case 1:
+    case 2:
+        return -M_PI/2 + atan(x/y);
+    case 3:
+    case 4:
+        return M_PI/2 + atan(x/y);
+    case 0:
+        return 0;
+    case -1:
+       	return (x>0) ? 0:M_PI;
+    case -2:
+        return (y>0) ? -M_PI/2: M_PI/2;
+    }
+    return 0; //should never get here.
+}
+
+//return 0 if origin, -1 if x axis, -2 if y axis, or quadrant the point is in
+int JDL::location(double x, double y) {
+    bool xIsZero = doublesEqual(0, x);
+    bool yIsZero = doublesEqual(0, y);
+    if (xIsZero && yIsZero)
+            return 0;
+    if (yIsZero)
+            return -1;
+    if (xIsZero)
+            return -2;
+    if (y > 0)
+            return (x > 0)? 1:2;
+    else //if  y < 0
+            return (x < 0)? 3:4;
+}
+
 #ifdef JDL_USE_SDL
 bool JDL::init(int width, int height, const char* title)
 {
@@ -297,6 +337,17 @@ char JDL::wait(int *x, int *y)
 			}
 		}
 	}
+}
+
+int JDL::event_waiting()
+{
+    SDL_Event e;
+    return SDL_PeepEvents(&e, 1, SDL_PEEKEVENT);
+}
+
+void JDL::sleep(double seconds)
+{
+    Sleep(roundi(1000*seconds));
 }
 
 //click is 0 for none, 1 for left, 2 for right
@@ -893,6 +944,16 @@ char JDL::wait(int *x, int *y)
     *x = gfx_xpos();
     *y = gfx_ypos();
     return toReturn;
+}
+
+int JDL::event_waiting()
+{
+    return gfx_event_waiting();
+}
+
+void JDL::sleep(double seconds)
+{
+    usleep(roundi(1000000*seconds));
 }
 
 void JDL::circle(int x, int y, int r)

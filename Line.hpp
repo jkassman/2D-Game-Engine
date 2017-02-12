@@ -13,6 +13,7 @@ class Crack;
 //A Line may have many cracks
 class Line
 {
+    friend class Crack;
 private:
     std::vector<Crack*> cracks;
 
@@ -24,12 +25,16 @@ public:
     int index;
 
     Line();
+    Line(const Line &other);
     Line(Point point1, Point point2);
+    Line(Point point1, double length, double direction);
 
     //Line(const Line & other);
     void move(double distance, double degrees);
     void draw() const;
     double length() const;
+
+    void switchPoints();
 
     bool intersectsInfinite(const Line &otherLine, Point *resultPoint);
     bool rayIntersects(const Line &otherLine, Point *resultPoint);
@@ -51,6 +56,8 @@ public:
     //or just never create a new crack; keep to some density.
     void increaseCracks(Point impactPoint, Shape *parentShape, double force);
     
+    double getDirection();
+
 };
 
 #endif

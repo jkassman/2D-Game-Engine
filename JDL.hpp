@@ -8,7 +8,7 @@
 #define MIDWAY_MOVE_KEY SDL_SCANCODE_M
 
 
-#define JDL_USE_SDL
+//#define JDL_USE_SDL
 
 #ifdef JDL_USE_SDL
 #include <SDL.h>
@@ -45,6 +45,8 @@ public:
 	static int text(int x, int y, const char* textureText);
 	static void fillRect(int x, int y, int w, int h);
 	static char wait(int *x, int *y);
+        static int event_waiting();
+        static void sleep(double seconds);
 
 	//this eats all events. Consider changing when hotkeys are added
 	static void clicked(int &x, int &y, int &click); //click is -1 for quit, 0 for none, 1 for left, 2 for right
@@ -59,6 +61,8 @@ public:
     static const double PRECISION;
 	static int roundi(double toRound);
 	static bool doublesEqual(double d1, double d2);
+    static double calculateTheta(double x, double y);
+    static int location(double x, double y);
 
 private:
 	//the following functions are used only in getInt and getDouble. Possibly bad form, but I thought it was better than typing the same thing 10 times.

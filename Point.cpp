@@ -1,6 +1,8 @@
 #include "Point.hpp"
 #include "JDL.hpp"
 
+#include "Line.hpp"
+
 #include <iostream>
 
 using namespace std;
@@ -79,4 +81,10 @@ bool Point::operator<(const Point &other) const
     {
         return false;
     }
+}
+
+bool Point::near(const Point &other, double radius)
+{
+    Line dist(*this, other);
+    return (dist.length() < radius);
 }

@@ -5,6 +5,7 @@
 #include "Line.hpp"
 #include "Point.hpp"
 
+#include <algorithm>
 #include <vector>
 
 class Line;
@@ -26,9 +27,10 @@ private:
     
 public:
     Crack(Shape *parentShape, Point startPoint, Line *startLine);
-    
+    Crack(const Crack &other);
+
     //force is a measure of how much the crack should increase in length
-    void increase(double force);
+    int increase(double force);
     Point startPoint();
 
     void move(double distance, double degrees);
