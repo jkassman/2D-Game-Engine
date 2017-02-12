@@ -190,7 +190,6 @@ void Crack::split(Line *endLine)
     //    The cracks will not be duplicated, but one set of lines gets one crack
     //    and one set of lines gets another).
     //After that, it calls Shape's split.
-
     //nevermind all that. The main job of this is to create a vector of lines
     //from one line of the shape to another line of the shape.
     //which is trivial for now.

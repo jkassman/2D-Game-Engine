@@ -37,12 +37,8 @@ public:
 
     void addPoint(Point toAdd);
     void fractureAt(Point clickPoint);
-
     void split (Line *startLine, Line *endLine, 
                 std::vector<Line*> &splitLines);
-
-//    void split(int indexA1, char posOrNegA, int indexA2, const std::vector<Line*> &CrackA,
-    //             int indexB1, char posOrNegB, int indexB2, const std::vector<Line*> &CrackB);
 };
 
 #endif
