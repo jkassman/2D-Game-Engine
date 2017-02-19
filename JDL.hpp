@@ -8,7 +8,7 @@
 #define MIDWAY_MOVE_KEY SDL_SCANCODE_M
 
 
-//#define JDL_USE_SDL
+#define JDL_USE_SDL
 
 #ifdef JDL_USE_SDL
 #include <SDL.h>

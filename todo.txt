@@ -1,4 +1,3 @@
-
 Thoughts to do: make split not initiated from crack
 when a crack detects that it needs to increase, have it store data
 and indicate to shape that it should split.
