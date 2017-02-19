@@ -79,11 +79,14 @@ int main(int argc, char **argv)
                 building->addPoint(Point(x, y));
                 break;
             case 0:
+                cout << "clicked!" << endl;
                 toDrawSize = toDraw.size();
                 for (j = 0; j < toDrawSize; j++)
                 {
                     toDraw[j]->fractureAt(Point(x,y));
                 }
+                cout << "time to draw!" << endl;
+                break;
             }
         }
 

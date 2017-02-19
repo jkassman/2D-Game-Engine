@@ -37,8 +37,7 @@ public:
 
     void addPoint(Point toAdd);
     void fractureAt(Point clickPoint);
-    void split (Line *startLine, Line *endLine, 
-                std::vector<Line*> &splitLines);
+    void split (std::vector<Line*> &splitLines);
 };
 
 #endif

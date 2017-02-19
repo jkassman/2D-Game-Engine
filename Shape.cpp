@@ -81,8 +81,10 @@ void Shape::fractureAt(Point clickPoint)
         if ((*i)->on(clickPoint, 10, &result))
         {
             //JDL::circle(result.x, result.y, 8);
-            (*i)->increaseCracks(result, this, 21);
-            return;
+            if ((*i)->increaseCracks(result, this, 21))
+            {
+                return;
+            }
         }
     }
 }
@@ -139,20 +141,24 @@ int Shape::rayTrace(Line &ray)
 
 
 //the crack should be destroyed after a split
-void Shape::split(Line *startLine, Line *endLine,
-                  vector<Line*> &splitLines)
+void Shape::split(vector<Line*> &splitLines)
 {
     //new new plan:
     //split the shape by lines, create two new shapes from them.
     //split startLine, split endLine, then throw the lines into shapes.
+
+    //temporary fix:
+    Line* startLine = splitLines.front();
+    splitLines.erase(splitLines.begin());
+    Line* endLine = splitLines.back();
+    splitLines.pop_back();
+
 
     //endLine splits intersectPoint->point2.
     Line *start1 = new Line();
     Line *start2 = new Line();
     int start1Index, start2Index;
     vector<Line*> lines1, lines2;
-
-    //TODO: deal with case startLine == endLine
 
     start1Index = endLine->index;
     start2Index = startLine->index;
@@ -230,9 +236,9 @@ void Shape::split(Line *startLine, Line *endLine,
     }
 
     //finished with lines1!
-    newIndex = 1;
 
     //now create lines2.
+    newIndex = 1;
     i = this->lines.begin() + start2Index;
     while (i != this->lines.begin() + start1Index)
     {
@@ -266,12 +272,7 @@ void Shape::split(Line *startLine, Line *endLine,
     //ok, now create a shape out of all that. Move it away, too.
     toDraw->push_back(new Shape(lines1, this->toDraw));
     int newDirection = 0;
-/*
-    if (this->direction == 0)
-    {
-        newDirection = 180;
-    }
-*/
+
     Line crackDirection(splitLines[0]->point1, splitLines.back()->point2);
     newDirection = crackDirection.getDirection() - 90;
     toDraw->back()->setSpeed(0.42 + this->speed, newDirection);

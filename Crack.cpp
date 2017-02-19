@@ -11,6 +11,7 @@ using namespace std;
 
 Crack::Crack(Shape *parentShape, Point startPoint, Line *startLine)
 {
+    this->shapeSplit = false;
     this->startLine = startLine;
     this->parentShape = parentShape;
     addPoint(startPoint);
@@ -21,7 +22,7 @@ Crack::Crack(const Crack &other)
     //TODO!
 }
 
-int Crack::increase(double force)
+void Crack::increase(double force)
 {
     //New Idea:
     //Create lines with random slopes starting from the given point until
@@ -49,15 +50,12 @@ int Crack::increase(double force)
         }
         else
         {
-            int modifier = rand() % 90;
-            modifier -= 45;
+            int turnDegrees = 90;
+            int modifier = rand() % turnDegrees;
+            modifier -= turnDegrees/2;
             //modifier = 10; //temporary debug lock
             degree = lines.back()->getDirection() + modifier;
         }
-        //double slope = tan(degree*M_PI / 180);
-        //Point startPoint = lines.back()->point2;
-        //Point nextPoint(startPoint.x + cos(degree*M_PI / 180) * force, 
-        //                startPoint.y + sin(degree*M_PI / 180) * force);
         fractureLine = Line(lines.back()->point2, force, degree);
 
         //see how many lines fractureLine's ray intersects with.
@@ -81,7 +79,7 @@ int Crack::increase(double force)
         }
     }
     //Now we know the crack is in the right direction.
-    //But we need to count how many lines it intersects
+    //But we need to count how many shape lines it intersects
     //(if it intersects no lines, we're done)
     vector<Line*>::iterator i;
     Point intersectPoint;
@@ -125,16 +123,15 @@ int Crack::increase(double force)
                 }
             }
         }
-        addPoint(fractureLine.point2);
-        split(shapeLine);
-        cout << "Exiting increase()" << endl;
-        return 1;
+        shapeSplit = true;
     }
-    else
+    //fractureLine.draw();
+    addPoint(fractureLine.point2);
+    if (shapeSplit)
     {
-        addPoint(fractureLine.point2);
+        generateSplitLines();
     }
-    return 0;
+    cout << "Exited increase()" << splitLines.size() << endl;
 }
 
 void Crack::move(double distance, double degrees)
@@ -182,33 +179,41 @@ void Crack::addPoint(Point toAdd)
 }
 
 
-void Crack::split(Line *endLine)
+void Crack::generateSplitLines()
 {
-    //this function should generate two separate lines from the crack that connects startLine and endLine.
-    //The two lines will be identical, at first
-    //(When we start having cracks off of cracks, the two sets of lines will differ;
-    //    The cracks will not be duplicated, but one set of lines gets one crack
-    //    and one set of lines gets another).
-    //After that, it calls Shape's split.
-    //nevermind all that. The main job of this is to create a vector of lines
-    //from one line of the shape to another line of the shape.
-    //which is trivial for now.
-/*
-    //First, remove this crack from the shape's lines:
-    vector<Crack*>::iterator i;
-    for (i = startLine->cracks.begin(); i != startLine->cracks.end(); ++i)
+    splitLines.push_back(startLine);
+    vector<Line*>::iterator i;
+    for (i = lines.begin(); i != lines.end(); ++i)
     {
-        if ((*i) == this)
+        splitLines.push_back(*i);
+    }
+
+    //discover the endLine
+    Point endPoint = lines.back()->point2;
+    for (i = parentShape->lines.begin(); i != parentShape->lines.end(); ++i)
+    {
+        if ((*i)->on(endPoint))
         {
-            startLine->cracks.erase(i);
-            break;
+            splitLines.push_back(*i);
         }
     }
-*/
-    //JDL::clear();
-    //draw();
-    //JDL::flush();
-    parentShape->split(startLine, endLine, lines);
+}
 
+void Crack::clearLines()
+{
     lines.clear();
+}
+
+void Crack::getSplitLines(vector<Line*> *splits)
+{
+    vector<Line*>::iterator i;
+    for (i = splitLines.begin(); i != splitLines.end(); ++i)
+    {
+        splits->push_back(*i);
+    }
+}
+
+bool Crack::isShapeSplit()
+{
+    return shapeSplit;
 }

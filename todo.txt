@@ -1,16 +1,10 @@
-Switch everything over to hold pointers to lines.
-(Cracks and shapes should have vectors of line pointers)
 
-Change split from crack to shape
-*********MAKE CRACK AND SHAPE THE SAME THING! Just with a bool shape or closed or something.
+Thoughts to do: make split not initiated from crack
+when a crack detects that it needs to increase, have it store data
+and indicate to shape that it should split.
 
-Add destructors!
-
-Make it compile
-
+add destructors
 add consts
-
-Fix bugs
 
 
 Overall structure:
