@@ -54,7 +54,10 @@ public:
     //eventually, use the force to calculate how many new cracks should
     //be created, if any.
     //or just never create a new crack; keep to some density.
-    int increaseCracks(Point impactPoint, Shape *parentShape, double force);
+    //int increaseCracks(Point impactPoint, Shape *parentShape, double force);
+
+    void getImpactedCracks(Point impactPoint, Shape *crackParentShape, 
+                           double force, std::vector<Crack*> *impactedCracks);
     
     double getDirection();
 

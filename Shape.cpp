@@ -74,6 +74,7 @@ void Shape::draw()
 
 void Shape::fractureAt(Point clickPoint)
 {
+    vector<Crack*> impactedCracks;
     vector<Line*>::iterator i;
     for (i = lines.begin(); i != lines.end(); ++i)
     {
@@ -81,6 +82,12 @@ void Shape::fractureAt(Point clickPoint)
         if ((*i)->on(clickPoint, 10, &result))
         {
             //JDL::circle(result.x, result.y, 8);
+            //
+            double force = 21;
+            
+            (*i)->getImpactedCracks(result, this, force, &impactedCracks);
+
+            //
             if ((*i)->increaseCracks(result, this, 21))
             {
                 return;
