@@ -26,14 +26,14 @@ int main(int argc, char **argv)
     char input;
     int x, y;
     int mode = 0;
-    Shape *building;
+    Shape *building = NULL;
     bool quit = false;
     //bool first = true;
     int toDrawSize;
     int j;
-
+#ifndef JDL_USE_SDL
     srand(time(NULL));
-
+#endif
     while (!quit)
     {
     //get input

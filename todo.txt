@@ -2,7 +2,6 @@ Switch everything over to hold pointers to lines.
 (Cracks and shapes should have vectors of line pointers)
 
 Change split from crack to shape
-*********MAKE CRACK AND SHAPE THE SAME THING! Just with a bool shape or closed or something.
 
 Add destructors!
 

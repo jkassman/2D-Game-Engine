@@ -339,10 +339,21 @@ char JDL::wait(int *x, int *y)
 	}
 }
 
+//warning: eats non-text or non-mouseclick events.
 int JDL::event_waiting()
 {
+    int numEvents = 0;
     SDL_Event e;
-    return SDL_PeepEvents(&e, 1, SDL_PEEKEVENT);
+    SDL_PumpEvents();
+    numEvents = SDL_PeepEvents(&e, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT);
+
+    //eat all events that we don't want.
+    while ( (numEvents > 0) && (e.type != SDL_TEXTINPUT) && (e.type != SDL_MOUSEBUTTONDOWN))
+    {
+        SDL_WaitEvent(&e);
+        numEvents = SDL_PeepEvents(&e, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT);
+    }
+    return numEvents;
 }
 
 void JDL::sleep(double seconds)
