@@ -979,6 +979,11 @@ int JDL::text(int x, int y, const char *text)
     return 1;
 }
 
+void JDL::setDrawColor(int r, int g, int b)
+{
+    gfx_color(r, g, b);
+}
+
 #endif
 int JDL::SCREEN_WIDTH = 800;
 int JDL::SCREEN_HEIGHT = 800;

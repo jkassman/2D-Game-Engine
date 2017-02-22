@@ -56,10 +56,12 @@ public:
     //or just never create a new crack; keep to some density.
     //int increaseCracks(Point impactPoint, Shape *parentShape, double force);
 
-    void getImpactedCracks(Point impactPoint, Shape *crackParentShape, 
+    void getImpactedCracks(Point impactPoint, Shape *parentShape, 
                            double force, std::vector<Crack*> *impactedCracks);
-    
+    void setCrackParents(Shape *crackParentShape);
+
     double getDirection();
+    int deleteCrack(Crack *toDelete);
 
 };
 

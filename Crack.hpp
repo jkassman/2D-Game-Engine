@@ -15,15 +15,11 @@ class Crack
 {
 private:
     std::vector<Line*> lines;
-    //splitLines[0] is the startLine of the shape
-    //splitLines.back() is the endLine of the shape
-    std::vector<Line*> splitLines;
     Line *startLine;
     Shape *parentShape;
     bool point;
     bool shapeSplit;
 
-    void generateSplitLines();
     void addPoint(Point toAdd);
     
 public:
@@ -33,13 +29,17 @@ public:
     //force is a measure of how much the crack should increase in length
     void increase(double force);
     Point startPoint();
+    Line *getStartLine();
 
     bool isShapeSplit();
     void getSplitLines(std::vector<Line*> *splits);
-    void clearLines();
+    void clearLines();                          
+    void setParent(Shape *parentShape);
 
     void move(double distance, double degrees);
     void draw() const;
+
+    bool lineIntersects(const Line &toCheck);
 };
 
 #endif

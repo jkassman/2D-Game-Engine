@@ -71,13 +71,13 @@ void Line::draw() const
 {
     JDL::line(JDL::roundi(point1.x), JDL::roundi(point1.y),
               JDL::roundi(point2.x), JDL::roundi(point2.y));
-/*
+
     double dx = point2.x - point1.x;
     double dy = point2.y - point1.y;
     JDL::text(JDL::roundi(point1.x + dx/2), 
               JDL::roundi(point1.y + dy/2), 
               to_string(index).c_str());
-*/
+
     vector<Crack*>::const_iterator i;
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {
@@ -289,63 +289,31 @@ void Line::createFracture(Point startPoint, Shape *parentShape, double force)
     cracks.back().increase(force);
     }
 */
-void Line::getImpactedCracks(Point impactPoint, Shape *crackParentShape, double force,
-                             std::vector<Crack*> *impactedCracks)
+void Line::getImpactedCracks(Point impactPoint, Shape *parentShape, 
+                             double force, std::vector<Crack*> *impactedCracks)
 {
     vector<Crack*>::iterator i;
     double radius = 10; //eventually, set the radius based on the force.
+    int numCracks = 0;
+    impactPoint.print();
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {
         if ((*i)->startPoint().near(impactPoint, radius))
         {
-
+            impactedCracks->push_back(*i);
+            numCracks++;
         }
     }
-    while (i != cracks.end())
+    //eventually, do this based on force?
+    if (numCracks == 0)
     {
-        if ((*i)->startPoint().near(impactPoint, 10))
-        {
-            numCracksIncreased++;
-            (*i)->increase(force);
-            if ((*i)->isShapeSplit())
-            {
-                (*i)->getSplitLines(&splitLines);
-                (*i)->clearLines(); //so the destructor doesn't erase the lines
-                i = cracks.erase(i);
-                parentShape->split(splitLines);
-                return 1;
-            }
-            else
-            {
-                ++i;
-            }
-        }
-        else
-        {
-            ++i;
-        }
-    }
-    if (numCracksIncreased == 0)
-    {
+        cout << "Creating new crack." << endl;
         cracks.push_back(new Crack(parentShape, impactPoint, this));
-        cracks.back()->increase(force);
-        if (cracks.back()->isShapeSplit())
-        {
-            cracks.back()->getSplitLines(&splitLines);
-            cracks.back()->clearLines();
-            cracks.pop_back();
-            parentShape->split(splitLines);
-            return 1;
-        }
-
+        impactedCracks->push_back(cracks.back());
     }
-    cout << "Finished increasing cracks" << endl;
-    return numSplit;
 }
 
-}
-
-             
+/*             
 int Line::increaseCracks(Point impactPoint, Shape *parentShape, double force)
 {
     //eventualy, want to handle multiple splits.
@@ -398,7 +366,7 @@ int Line::increaseCracks(Point impactPoint, Shape *parentShape, double force)
     cout << "Finished increasing cracks" << endl;
     return numSplit;
 }
-
+*/
 //splitPoint must be on the line
 //will create two new lines: this will be point1->splitPoint,
 //newLine is splitPoint->point2
@@ -445,4 +413,28 @@ double Line::getDirection()
     direction *= 180/M_PI;
     direction *= -1; //not sure why this is needed...
     return direction;
+}
+
+void Line::setCrackParents(Shape *crackParentShape)
+{
+    vector<Crack*>::iterator c;
+    for (c = cracks.begin(); c != cracks.end(); ++c)
+    {
+        (*c)->setParent(crackParentShape);
+    }
+}
+
+//returns number of cracks deleted (1 or 0)
+int Line::deleteCrack(Crack *toDelete)
+{
+    vector<Crack*>::iterator c;
+    for (c = cracks.begin(); c != cracks.end(); ++c)
+    {
+        if (*c == toDelete)
+        {
+            cracks.erase(c);
+            return 1;
+        }
+    }
+    return 0;
 }

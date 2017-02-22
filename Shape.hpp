@@ -38,6 +38,11 @@ public:
     void addPoint(Point toAdd);
     void fractureAt(Point clickPoint);
     void split (std::vector<Line*> &splitLines);
+
+    void grabShapeLines(int startIndex, int endIndex,
+                        std::vector<Line*> *result);
 };
+
+void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2);
 
 #endif
