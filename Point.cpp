@@ -59,6 +59,11 @@ bool Point::operator==(const Point &other)
     return (JDL::doublesEqual(x, other.x) && JDL::doublesEqual(y, other.y));
 }
 
+bool Point::operator!=(const Point &other)
+{
+    return !(*this == other);
+}
+
 //compare x first, then compare y
 bool Point::operator<(const Point &other) const
 {
