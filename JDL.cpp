@@ -13,7 +13,7 @@
 #include "gfx_j.h"
 #endif
 
-const double JDL::PRECISION = 0.01;
+const double JDL::PRECISION = 0.0001;
 
 JDL::JDL()
 {

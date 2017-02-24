@@ -21,6 +21,9 @@ private:
     double speed;
     double direction; //in degrees
 
+    bool sanityCheck();
+    void debugDraw();
+
 public:
     Shape(std::vector<Point> givenPoints, std::vector<Shape*> *toDraw);
     Shape(std::vector<Line*> &givenLines, std::vector<Shape*> *toDraw);
@@ -29,6 +32,7 @@ public:
     
     void move();
   //void setAcc(double acceleration, double direction); //in pixels per timestep
+    void accelerate(double acceleration, double degrees);
     void setSpeed(double speed, double degrees); //in pixels per timestep
     void move(double distance, double degrees);
     void draw();
@@ -36,10 +40,13 @@ public:
     int rayTrace(Line &ray);
 
     void addPoint(Point toAdd);
-    void fractureAt(Point clickPoint);
+    int fractureAt(Point clickPoint);
     void split (std::vector<Line*> &splitLines);
 
     void grabShapeLines(int startIndex, int endIndex,
+                        std::vector<Line*> *result);
+    void grabShapeLines(std::vector<Line*>::iterator startIndex, 
+                        std::vector<Line*>::iterator endIndex, 
                         std::vector<Line*> *result);
 };
 

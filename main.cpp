@@ -83,7 +83,10 @@ int main(int argc, char **argv)
                 toDrawSize = toDraw.size();
                 for (j = 0; j < toDrawSize; j++)
                 {
-                    toDraw[j]->fractureAt(Point(x,y));
+                    if (toDraw[j]->fractureAt(Point(x,y)))
+                    {
+                        break;
+                    }
                 }
                 cout << "time to draw!" << endl;
                 break;

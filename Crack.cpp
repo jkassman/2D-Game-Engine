@@ -46,7 +46,7 @@ void Crack::increase(double force)
     vector<Point> intersectPoints;
     vector<Line*> intersectLines;
     Line fractureLine;
-    int turnDegrees = 110;
+    int turnDegrees = 90;
 
     while (true)
     {
@@ -93,6 +93,7 @@ void Crack::increase(double force)
         }
         if (badLine) 
         {
+//            JDL::sleep(1);
             turnDegrees += 10;
             if (turnDegrees > 360)
             {
@@ -100,9 +101,6 @@ void Crack::increase(double force)
             }
             continue;
         }
-
-        //for all cracks on those lines
-        //for all lines on those cracks
 
         //see how many lines fractureLine's ray intersects with.
         //(make sure the crack is in the right direction)
@@ -124,6 +122,7 @@ void Crack::increase(double force)
         {
             break;
         }
+//        JDL::sleep(1);
     }
     //Now we know the crack is in the right direction.
     //But we need to count how many shape lines it intersects

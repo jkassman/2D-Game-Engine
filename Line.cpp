@@ -71,13 +71,14 @@ void Line::draw() const
 {
     JDL::line(JDL::roundi(point1.x), JDL::roundi(point1.y),
               JDL::roundi(point2.x), JDL::roundi(point2.y));
-
+//#define DRAW_LINE_TEXT
+#ifdef DRAW_LINE_TEXT
     double dx = point2.x - point1.x;
     double dy = point2.y - point1.y;
     JDL::text(JDL::roundi(point1.x + dx/2), 
               JDL::roundi(point1.y + dy/2), 
               to_string(index).c_str());
-
+#endif
     vector<Crack*>::const_iterator i;
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {
@@ -376,6 +377,10 @@ void Line::split(Point splitPoint, Line *newLine)
     {
         cerr << "The point to split is not on the line!" << endl;
         return;
+    }
+    if (splitPoint == point1 || splitPoint == point2)
+    {
+        cerr << "The split point is on the end point of the line!" << endl;
     }
     newLine->index = index;
     newLine->point1 = splitPoint;
