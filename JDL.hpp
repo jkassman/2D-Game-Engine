@@ -59,8 +59,9 @@ public:
 
 	//basic utility functions:
     static const double PRECISION;
-	static int roundi(double toRound);
-	static bool doublesEqual(double d1, double d2);
+    static int roundi(double toRound);
+    static bool doublesEqual(double d1, double d2);
+    static double randDouble(double rangeStart, double rangeEnd);
     static double calculateTheta(double x, double y);
     static int location(double x, double y);
 

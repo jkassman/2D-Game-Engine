@@ -36,14 +36,16 @@ public:
 
     void switchPoints();
 
-    bool intersectsInfinite(const Line &otherLine, Point *resultPoint);
-    bool rayIntersects(const Line &otherLine, Point *resultPoint);
+    bool intersectsInfinite(const Line &otherLine, Point *resultPoint) const;
+    bool rayIntersects(const Line &otherLine) const;
+    bool rayIntersects(const Line &otherLine, Point *resultPoint) const;
     bool onRay(Point testPoint, double radius, Point *resultPoint);
     bool onRay(Point testPoint);
     bool intersects(const Line &otherLine, Point *resultPoint);
-    bool on(Point testPoint, double radius, Point *resultPoint) const;
-    bool on(Point testPoint) const;
-    bool operator==(const Line &other);
+    bool on(const Point & testPoint, double radius, Point *resultPoint) const;
+    bool on(const Point & testPoint) const;
+    bool operator==(const Line &other) const;
+    bool coincident(const Line &other) const;
     //Line operator=(const Line &other);
 
     void split(Point splitPoint, Line *newLine);
@@ -64,5 +66,7 @@ public:
     int deleteCrack(Crack *toDelete);
 
 };
+
+void drawLines(std::vector<Line*> toDraw, double secondsToSleep);
 
 #endif

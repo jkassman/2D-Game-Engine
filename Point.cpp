@@ -54,7 +54,7 @@ double Point::operator[](char coord)
     }
 }
 
-bool Point::operator==(const Point &other)
+bool Point::operator==(const Point &other) const
 {
     return (JDL::doublesEqual(x, other.x) && JDL::doublesEqual(y, other.y));
 }

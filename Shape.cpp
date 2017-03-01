@@ -80,7 +80,7 @@ int Shape::fractureAt(Point clickPoint)
 {
     vector<Crack*> impactedCracks;
     vector<Line*>::iterator i;
-    double force = 100;
+    double force = 21;
     for (i = lines.begin(); i != lines.end(); ++i)
     {
         Point result;
@@ -125,6 +125,18 @@ void Shape::addPoint(Point toAdd)
     lines.back()->index = lines.size()-1;
 }
 
+bool Shape::lineOnBorder(const Line &toCheck) const
+{
+    vector<Line*>::const_iterator l;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        if ((*l)->coincident(toCheck))
+        {
+            return true;
+        }
+    }
+    return false;
+}
 
 //returns the number of lines in the shape that are intersected.
 //Assumes the line is a ray starting at point1 and going to point2.
@@ -171,157 +183,30 @@ void Shape::split(vector<Line*> &splitLines)
     //split startLine, split endLine, then throw the lines into shapes.
 
     //temporary fix:
-    Line* startLine = splitLines.front();
+    //Line* startLine = splitLines.front();
     splitLines.erase(splitLines.begin());
-    Line* endLine = splitLines.back();
+    //Line* endLine = splitLines.back();
     splitLines.pop_back();
 
 
     //endLine splits intersectPoint->point2.
     vector<Line*> lines1, lines2;
-
+    vector<Line*>::iterator l;
+    vector<Crack*>::iterator c;
     
     Point crackStartPoint, crackEndPoint;
     crackStartPoint = splitLines[0]->point1;
     crackEndPoint = splitLines.back()->point2;
-#ifdef OLD_CODE
-    vector<Line*>::iterator l;
-    int start1Index, start2Index, end1Index, end2Index;
-    start1Index = startLine->index;
-    end1Index = endLine->index;
-    start2Index = endLine->index;
-    end2Index = startLine->index;
-    
-    Line *start1, *start2;
-    start1 = new Line();
-    start2 = new Line();
-    
-    bool sameLineSplit = (startLine == endLine);
 
-    if (sameLineSplit)
-    {
-        cout << "Same Line!" << endl;
-        Point farPoint, closePoint; //far or close to startLine->point1
-        Line firstSplit(startLine->point1, crackStartPoint);
-        Line secondSplit(startLine->point1, crackEndPoint);
-        if (firstSplit.length() > secondSplit.length())
-        {
-            farPoint = crackStartPoint;
-            closePoint = crackEndPoint;
-        }
-        else
-        {
-            farPoint = crackEndPoint;
-            closePoint = crackStartPoint;
-        }
-     
-        //we want endLine (end1) to be point1->closePoint
-        //and start1 to be farPoint->point2
-        
-        //start2 and end2 are the same line, closePoint->farPoint
-        
-        endLine->split(closePoint, start2);
-        //endLine: point1->closePoint
-        //start2: closePoint->point2.
+    grabShapeLines(crackStartPoint, crackEndPoint, &lines1);
+    grabShapeLines(crackEndPoint, crackStartPoint, &lines2);
+    JDL::setDrawColor(0, 0, 255);
+    drawLines(lines1, 0);
+    JDL::setDrawColor(255, 255, 0);
+    drawLines(lines2, 0);
+    //JDL::sleep(5);
+    JDL::setDrawColor(255, 255, 255);
 
-        start2->split(farPoint, start1);
-        //start2: closePoint->farPoint
-        //start1: farPoint->point2
-    }
-    else
-    {
-        //start1: crackStartPoint->startLine.Point2
-        //end1: endLine.point1->crackEndPoint
-        //start2: crackEndPoint->endLine.point2
-        //end2: startLine.point1->crackStartPoint
-        //end1 and end2 should remain as belonging to this shape;
-        //start1 and start2 will just be inserted into the vector.
- 
-        Line *end1, *end2;
-        end2 = startLine;
-        end1 = endLine;
-        end2->split(crackStartPoint, start1);
-        end1->split(crackEndPoint, start2);
-    }
-
-    start1->index = 0;
-    start2->index = 0;
-
-    lines1.push_back(start1);
-    cout << "start1Index: " << start1Index << "end1Index" << end1Index << endl;
-    grabShapeLines(start1Index+1, end1Index, &lines1);
-    
-    lines2.push_back(start2);
-    if (!sameLineSplit)
-    {
-        grabShapeLines(start2Index+1, end2Index, &lines2);
-    }
-#else
-    vector<Line*>::iterator l;
-    if (startLine == endLine)
-    {
-        Point farPoint, closePoint; //far or close to startLine->point1
-        Line firstSplit(startLine->point1, crackStartPoint);
-        Line secondSplit(startLine->point1, crackEndPoint);
-        if (firstSplit.length() > secondSplit.length())
-        {
-            farPoint = crackStartPoint;
-            closePoint = crackEndPoint;
-            //let's reverse the splitLines, to be safe.
-            for (l = splitLines.begin(); l != splitLines.end(); ++l)
-            {
-                (*l)->switchPoints();
-            }
-        }
-        else
-        {
-            farPoint = crackEndPoint;
-            closePoint = crackStartPoint;
-        }
-        crackStartPoint = closePoint;
-        crackEndPoint = farPoint;
-    }
-    
-    //split the lines at the crack.
-    vector<Line*>::iterator next;
-    for (l = lines.begin(); l != lines.end();)
-    {
-        next = l + 1;
-        if (*l == startLine)
-        {
-            Line *nextLine = new Line();
-            (*l)->split(crackStartPoint, nextLine);
-            next = lines.insert(l+1, nextLine);
-        }
-        if (*l == endLine)
-        {
-            Line *nextLine = new Line();
-            (*l)->split(crackEndPoint, nextLine);
-            next = lines.insert(l+1, nextLine);
-        }
-        l = next;
-    }
-    
-    vector<Line*>::iterator start1It, end1It, start2It, end2It;
-    //discover the split lines
-    for (l = lines.begin(); l != lines.end(); ++l)
-    {
-        if (*l == startLine)
-        {
-            end2It = l;
-            start1It = l + 1;
-        }
-        //note: Important that it's not else if for same line case
-        if (*l == endLine)
-        {
-            end1It = l;
-            start2It = l + 1;
-        }
-    }
-    
-    grabShapeLines(start1It, end1It, &lines1);
-    grabShapeLines(start2It, end2It, &lines2);
-#endif
 
     /*
       Finished grabbing the relevant lines from the shape.
@@ -357,9 +242,9 @@ void Shape::split(vector<Line*> &splitLines)
 
     /* Create a new shape (using lines1) */
     Shape *newShape = new Shape(lines1, this->toDraw);
-    if (!sanityCheck())
+    if (!newShape->sanityCheck())
     {
-        debugDraw();
+        newShape->debugDraw();
     }
     toDraw->push_back(newShape);
     newShape->speed = this->speed;
@@ -383,52 +268,97 @@ void Shape::split(vector<Line*> &splitLines)
                      
 
     //TODO: Delete splitlines here! We made two copies
-
-    /*
-    //DEBUG DRAW:
-    char garbage;
-    vector<Line*>::iterator debug;
-    JDL::clear();
-    for (debug = lines1.begin(); debug != lines1.end(); ++debug)
-    {
-        cin >> garbage;
-        (*debug)->draw();
-        JDL::flush();
-    }
-
-    for (debug = lines2.begin(); debug != lines2.end(); ++debug)
-    {
-        cin >> garbage;
-        (*debug)->draw();
-        JDL::flush();
-    }
-*/
     
     cout << "Finished the split" << endl;
 }
 
-
-void Shape::grabShapeLines(int startIndex, int endIndex, vector<Line*> *result)
+//grabs all lines in between startPoint and endPoint
+//splits them if necessary. (NOT const)
+void Shape::grabShapeLines(Point startPoint, Point endPoint,
+                           vector<Line*> *result)
 {
-    int index;
-    if (result->size() > 0)
+    /*
+      step 1: find the first line that contains startPoint.
+      either split it or not.
+      -if split, edit shape to have both pieces.
+    */
+    vector<Line*>::iterator l;
+    //should break before reaching lines.end().
+    for (l = lines.begin(); l != lines.end(); ++l)
     {
-        index = result->back()->index + 1;
-    }
-
-    vector<Line*>::iterator i = this->lines.begin() + startIndex;
-    do {        
-        if (i == this->lines.end())
+        if ((*l)->on(startPoint))
         {
-            i = this->lines.begin();
+            if (startPoint == (*l)->point1)
+            {
+                break;
+            }
+            else if (startPoint == (*l)->point2)
+            {
+                //no split required, nothing to push back.
+                ++l;
+                break;
+            }
+            else
+            {
+                Line *newLine = new Line();
+                (*l)->split(startPoint, newLine);
+                l = lines.insert(l+1, newLine);
+                //result->push_back(newLine);
+                //newLine->index = 0;
+                break;
+            }
         }
-
-        (*i)->index = index;
+    }
+    if (l == lines.end())
+    {
+        cerr << "The crack start point is not on the shape!" << endl;
+        return;
+    }
+    
+    /*
+      Step 2:
+      push back everything until we hit the endPoint.
+      then either split or not.
+      If split, edit shape to have both pieces
+    */
+    int index = 0;
+    
+    //note: we may have to wrap around the shape here
+    //the only exit is via breaks. yay standards.
+    while (true)
+    {
+        if ((*l)->on(endPoint))
+        {
+            if (endPoint == (*l)->point1)
+            {
+                //no split required, don't push anything back.
+                break;
+            }
+            else if (endPoint == (*l)->point2)
+            {
+                result->push_back(*l);
+                (*l)->index = index;
+                break;
+            }
+            else
+            {
+                Line *newLine = new Line();
+                (*l)->split(endPoint, newLine);
+                (*l)->index = index;
+                result->push_back(*l);
+                lines.insert(l+1, newLine);
+                break;
+            }
+        }
+        result->push_back(*l);
+        (*l)->index = index;
         index++;
-        result->push_back(*i);
-
-        ++i;
-    } while ( i != (this->lines.begin() + endIndex + 1));
+        ++l;
+        if (l == lines.end())
+        {
+            l = lines.begin();
+        }
+    }
 }
 
 void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
@@ -563,29 +493,10 @@ void Shape::debugDraw()
     for (l = lines.begin(); l != lines.end(); ++l)
     {
         (*l)->draw();
+        cout << "Drew line " << (*l)->index << "." << endl;
         JDL::flush();
         JDL::sleep(1);
     }
 
     debugDraw();
-}
-
-void Shape::grabShapeLines(vector<Line*>::iterator startIt, 
-                           vector<Line*>::iterator endIt, 
-                           vector<Line*> *result)
-{
-    result->size();
-    cout << *startIt;
-    vector<Line*>::iterator l = startIt;
-    result->push_back(*l);
-    while (l != endIt)
-    {
-        l++;
-        if (l == lines.end())
-        {
-            l = lines.begin();
-        }
-        result->push_back(*l);
-        //cout << l - lines.begin() << endl;
-    } 
 }

@@ -41,28 +41,26 @@ void Crack::increase(double force)
     //    (If it intersects with multiple, choose the closest edge)
 
     int numIntersects = 0;
-    bool startsOnLine = false;
-    
+      
     vector<Point> intersectPoints;
     vector<Line*> intersectLines;
     Line fractureLine;
-    int turnDegrees = 90;
+    double turnDegrees = 110;
 
     while (true)
     {
-        int degree;
+        double degree;
         
         //create a random slope of the line
         if (point)
         {
-            degree = rand() % 360;
+            degree = JDL::randDouble(0, 360);
+            //degree = rand() % 360;
         }
         else
         {
             double direction = lines.back()->getDirection();
-            int turnDegrees = 110;
-            int modifier = rand() % turnDegrees;
-            modifier -= turnDegrees/2;
+            double modifier = JDL::randDouble(-turnDegrees/2, turnDegrees/2);
             //modifier = 25; //temporary debug lock
             degree = direction + modifier;
         }
@@ -73,7 +71,6 @@ void Crack::increase(double force)
         fractureLine.draw();
         JDL::setDrawColor(255,255,255);
         JDL::flush();
-        cout << "parentShape's size: " << parentShape->lines.size() << endl;
 
         //if it intersects with a crack, choose a new line.
         vector<Line*>::iterator l;
@@ -102,19 +99,20 @@ void Crack::increase(double force)
             continue;
         }
 
+        //check if the line is on top of one of the shape lines, and reject it
+        //if it is.
+        if (parentShape->lineOnBorder(fractureLine))
+        {
+            JDL::setDrawColor(255, 0, 255);
+            fractureLine.draw();
+            JDL::setDrawColor(255,255,255);
+            JDL::flush();
+            continue;
+        }
+
         //see how many lines fractureLine's ray intersects with.
         //(make sure the crack is in the right direction)
         int numRay = parentShape->rayTrace(fractureLine);
-        cout << "rayTrace returned: " << numRay;
-        //if the start point of this fracture is on the crack's start line,
-        //subtract one from the rayTrace count.
-        if (startLine->on(fractureLine.point1))
-        {
-            startsOnLine = true;
-            numRay--;
-            cout << ", corrected to: " << numRay;
-        }
-        cout << endl;
 
         //if the number lines intersected is odd, it's in the right direction.
         //else, repeat this process again.
@@ -133,13 +131,9 @@ void Crack::increase(double force)
     {
         if ((*i)->intersects(fractureLine, &intersectPoint))
         {
-            if (startsOnLine)
+            if (intersectPoint == fractureLine.point1)
             {
-                //disregard intersects on the line the crack starts from
-                if (startLine->on(intersectPoint))
-                {
-                    continue;
-                }
+                continue;
             }
             numIntersects++;
             intersectPoints.push_back(intersectPoint);

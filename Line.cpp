@@ -92,7 +92,7 @@ double Line::length() const
 }
 
 //check if the two lines (not segments) intersect
-bool Line::intersectsInfinite(const Line &otherLine, Point *resultPoint)
+bool Line::intersectsInfinite(const Line &otherLine, Point *resultPoint) const
 {
     double x1, x2, x3, x4;
     double y1, y2, y3, y4;
@@ -118,11 +118,21 @@ bool Line::intersectsInfinite(const Line &otherLine, Point *resultPoint)
     return true;
 }
 
+bool Line::rayIntersects(const Line &otherLine) const
+{
+    //TODO: Lazy implementation
+    Point dummy;
+    return rayIntersects(otherLine, &dummy);
+}
+
 //this line is the ray, otherLine is a segment
 //return true if they intersect, false otherwise.
+//NOTE: IGNORES POINT1!
+//(If ray.point1 is on otherLine, that does NOT count as an intersect)
 
 /* Probably isn't working, requires further testing */
-bool Line::rayIntersects(const Line &otherLine, Point *resultPoint)
+//Nah, I think it works.
+bool Line::rayIntersects(const Line &otherLine, Point *resultPoint) const
 {
     Point intersect;
     if (!intersectsInfinite(otherLine, &intersect))
@@ -133,6 +143,12 @@ bool Line::rayIntersects(const Line &otherLine, Point *resultPoint)
     {
         return false;
     }
+
+    if (otherLine.on(this->point1))
+    {
+        return false;
+    }
+
     //we now know that this infinite line intersects with the otherLine segment.
     //Now we need to know if this intersection was on the wrong side of the ray.
 
@@ -188,7 +204,7 @@ bool Line::intersects(const Line &otherLine, Point *resultPoint)
     return false;
 }
 
-bool Line::on(Point testPoint, double radius, Point *resultPoint) const
+bool Line::on(const Point & testPoint, double radius, Point *resultPoint) const
 {
     double slope;
     double maxY, minY, maxX, minX;
@@ -263,15 +279,21 @@ bool Line::on(Point testPoint, double radius, Point *resultPoint) const
 }
 
 //lazy implementation
-bool Line::on(Point testPoint) const
+bool Line::on(const Point &testPoint) const
 {
     Point dummyPoint;
     return this->on(testPoint, JDL::PRECISION, &dummyPoint);
 }
 
-bool Line::operator==(const Line &other)
+bool Line::operator==(const Line &other) const
 {
     return ((point1 == other.point1) && (point2 == other.point2));
+}
+
+//not equivalence; if one line sort of "fits on top of" another
+bool Line::coincident(const Line &other) const
+{
+    return (on(other.point1) && on(other.point2));
 }
 
 /*
@@ -442,4 +464,15 @@ int Line::deleteCrack(Crack *toDelete)
         }
     }
     return 0;
+}
+
+void drawLines(vector<Line*> toDraw, double secondsToSleep)
+{
+    vector<Line*>::iterator l;
+    for (l = toDraw.begin(); l != toDraw.end(); ++l)
+    {
+        (*l)->draw();
+        JDL::flush();
+        JDL::sleep(secondsToSleep);
+    }
 }

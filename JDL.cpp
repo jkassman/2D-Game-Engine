@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <math.h>
+#include <algorithm>
 
 #define _USE_MATH_DEFINES
 
@@ -63,6 +64,14 @@ double JDL::calculateTheta(double x, double y) {
         return (y>0) ? -M_PI/2: M_PI/2;
     }
     return 0; //should never get here.
+}
+
+double JDL::randDouble(double rangeStart, double rangeEnd)
+{
+    double toReturn = (double) rand() / RAND_MAX;
+    toReturn *= (rangeEnd - rangeStart);
+    toReturn += rangeStart;
+    return toReturn;
 }
 
 //return 0 if origin, -1 if x axis, -2 if y axis, or quadrant the point is in

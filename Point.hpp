@@ -14,7 +14,7 @@ public:
     Point(const Point &other);
     void print() const;
     Point operator=(const Point &other);
-    bool operator==(const Point &other);
+    bool operator==(const Point &other) const;
     bool operator!=(const Point &other);
     double operator[](char coord);
     bool operator<(const Point &other) const;

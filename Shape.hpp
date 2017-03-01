@@ -43,11 +43,16 @@ public:
     int fractureAt(Point clickPoint);
     void split (std::vector<Line*> &splitLines);
 
+    void grabShapeLines(Point startPoint, Point endPoint,
+                        std::vector<Line*> *result);
+/*
     void grabShapeLines(int startIndex, int endIndex,
                         std::vector<Line*> *result);
     void grabShapeLines(std::vector<Line*>::iterator startIndex, 
                         std::vector<Line*>::iterator endIndex, 
                         std::vector<Line*> *result);
+*/
+    bool lineOnBorder(const Line &toCheck) const;
 };
 
 void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2);
