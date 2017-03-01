@@ -182,13 +182,6 @@ void Shape::split(vector<Line*> &splitLines)
     //split the shape by lines, create two new shapes from them.
     //split startLine, split endLine, then throw the lines into shapes.
 
-    //temporary fix:
-    //Line* startLine = splitLines.front();
-    splitLines.erase(splitLines.begin());
-    //Line* endLine = splitLines.back();
-    splitLines.pop_back();
-
-
     //endLine splits intersectPoint->point2.
     vector<Line*> lines1, lines2;
     vector<Line*>::iterator l;
@@ -499,4 +492,37 @@ void Shape::debugDraw()
     }
 
     debugDraw();
+}
+
+//returns the number of intersect points found
+//ignores crackToIgnore
+int Shape::lineIntersectsCrack(const Line &toCheck, 
+                               vector<Crack*> *intersectCracks, 
+                               vector<Point>  *intersectPoints,
+                               Crack *crackToIgnore) const
+{
+    vector<Line*>::const_iterator l;
+    vector<Crack*>::const_iterator c;
+    int numIntersects = 0;
+    Point *intersect = new Point();
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        for (c = (*l)->cracks.begin(); c != (*l)->cracks.end(); ++c)
+        {
+            if ((*c) == crackToIgnore)
+            {
+                continue;
+            }
+            if ((*c)->lineIntersects(toCheck, intersect))
+            {
+                intersectCracks->push_back(*c);
+                intersectPoints->push_back(*intersect);
+
+                numIntersects++;
+                intersect = new Point();
+            }
+        }
+    }
+    delete intersect;
+    return numIntersects;
 }

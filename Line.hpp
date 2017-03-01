@@ -15,11 +15,12 @@ class Line
 {
     friend class Crack;
 private:
-    std::vector<Crack*> cracks;
 
     //void getImpacts(const Point &impactPoint); 
 
 public:
+    std::vector<Crack*> cracks;
+    
     Point point1;
     Point point2;
     int index;

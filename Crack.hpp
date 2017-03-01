@@ -15,15 +15,20 @@ class Crack
 {
 private:
     std::vector<Line*> lines;
+    Crack *intersectCrack;
+    bool doDelete;
+
     Line *startLine;
     Shape *parentShape;
     bool point;
     bool shapeSplit;
 
     void addPoint(Point toAdd);
+    void init(Shape *parentShape, Point startPoint, Line *startLine);
     
 public:
     Crack(Shape *parentShape, Point startPoint, Line *startLine);
+    Crack(Shape *parentShape, const std::vector<Line*> &newLines, Line *start);
     Crack(const Crack &other);
 
     //force is a measure of how much the crack should increase in length
@@ -32,6 +37,7 @@ public:
     Line *getStartLine();
 
     bool isShapeSplit();
+    bool shouldDelete();
     void getSplitLines(std::vector<Line*> *splits);
     void clearLines();                          
     void setParent(Shape *parentShape);
@@ -39,7 +45,7 @@ public:
     void move(double distance, double degrees);
     void draw() const;
 
-    bool lineIntersects(const Line &toCheck);
+    bool lineIntersects(const Line &toCheck, Point *intersect);
 };
 
 #endif

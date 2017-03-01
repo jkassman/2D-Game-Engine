@@ -452,6 +452,7 @@ void Line::setCrackParents(Shape *crackParentShape)
 }
 
 //returns number of cracks deleted (1 or 0)
+//NOTE: Should not destruct the cracks. Build a destructCrack for that if needed
 int Line::deleteCrack(Crack *toDelete)
 {
     vector<Crack*>::iterator c;

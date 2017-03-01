@@ -53,6 +53,10 @@ public:
                         std::vector<Line*> *result);
 */
     bool lineOnBorder(const Line &toCheck) const;
+    int lineIntersectsCrack(const Line &toCheck, 
+                             std::vector<Crack*> *intersectCracks,
+                            std::vector<Point> *intersectPoints,
+                            Crack *crackToIgnore) const;
 };
 
 void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2);
