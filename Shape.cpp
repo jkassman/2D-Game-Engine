@@ -6,6 +6,7 @@
 #include <iostream>
 #include <algorithm>
 #include <math.h>
+#include <sstream>
 
 using namespace std;
 Shape::Shape(vector<Point> givenPoints, vector<Shape*> *toDraw)
@@ -35,11 +36,6 @@ Shape::Shape(vector<Line*> &givenLines, vector<Shape*> *toDraw)
     this->direction = 0;
     this->toDraw = toDraw;
     this->lines = givenLines;
-}
-
-bool Shape::inside(Point toTest)
-{
-    return false;
 }
 
 void Shape::move(double distance, double degrees)
@@ -75,20 +71,44 @@ void Shape::draw()
     }
 }
 
+Crack *Shape::addCrack(Point impactPoint)
+{
+    vector<Line*>::iterator l;
+    Point result;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        if ((*l)->on(impactPoint, 10, &result))
+        {
+            return (*l)->addCrack(result, this);
+        }
+    }
+    return NULL;
+}
+
 //returns how many cracks were affected
 int Shape::fractureAt(Point clickPoint)
 {
     vector<Crack*> impactedCracks;
     vector<Line*>::iterator i;
-    double force = 21;
+    double force = 50;
+    int numCracks = 0;
     for (i = lines.begin(); i != lines.end(); ++i)
     {
         Point result;
         if ((*i)->on(clickPoint, 10, &result))
         {
             //JDL::circle(result.x, result.y, 8);            
-            (*i)->getImpactedCracks(result, this, force, &impactedCracks);
-            break;
+            numCracks += (*i)->getImpactedCracks(clickPoint, this,
+                                                 &impactedCracks);
+        }
+    }
+    if (numCracks == 0)
+    {
+        Crack *newCrack = addCrack(clickPoint);
+        if (newCrack)
+        {
+            cout << "Creating New Crack" << endl;
+            impactedCracks.push_back(newCrack);
         }
     }
     
@@ -191,6 +211,11 @@ void Shape::split(vector<Line*> &splitLines)
     crackStartPoint = splitLines[0]->point1;
     crackEndPoint = splitLines.back()->point2;
 
+    crackStartPoint.drawCircle(3);
+    crackEndPoint.drawCircle(3);
+    JDL::flush();
+    JDL::sleep(1);
+        
     grabShapeLines(crackStartPoint, crackEndPoint, &lines1);
     grabShapeLines(crackEndPoint, crackStartPoint, &lines2);
     JDL::setDrawColor(0, 0, 255);
@@ -214,10 +239,10 @@ void Shape::split(vector<Line*> &splitLines)
         splitLinesCopy1.push_back(new Line(**l));
         splitLinesCopy2.push_back(new Line(**l));
     }
-
+    
     appendLines(&lines1, splitLinesCopy1);
     appendLines(&lines2, splitLinesCopy2);
-
+    
     /*
       Finished creating the new lines for the shapes.
       Time to make shapes from these lines:
@@ -226,6 +251,7 @@ void Shape::split(vector<Line*> &splitLines)
     //reassign the lines in this shape to be those of lines2.
     this->lines.clear();
     this->lines.assign(lines2.begin(), lines2.end());
+    removeCracksOutside();
     
     if (!sanityCheck())
     {
@@ -235,6 +261,7 @@ void Shape::split(vector<Line*> &splitLines)
 
     /* Create a new shape (using lines1) */
     Shape *newShape = new Shape(lines1, this->toDraw);
+    newShape->removeCracksOutside();
     if (!newShape->sanityCheck())
     {
         newShape->debugDraw();
@@ -356,6 +383,7 @@ void Shape::grabShapeLines(Point startPoint, Point endPoint,
 
 void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
 {    
+
     Line *lastLine1 = lines1->back();
     int index = lastLine1->index + 1;
 
@@ -364,7 +392,7 @@ void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
     
     //if the first point of the first line in lines2 
     //is on the last line of lines1
-    if (lastLine1->on(firstPoint2))
+    if (lastLine1->point2==firstPoint2)
     {
         //standard combine
         vector<Line*>::iterator i;
@@ -377,7 +405,7 @@ void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
     }
     //if the last point of the last line in lines2
     //is on the last line of lines1
-    else if (lastLine1->on(lastPoint2))
+    else if (lastLine1->point2 ==lastPoint2)
     {
         //reverse combine
         vector<Line*>::reverse_iterator i;
@@ -442,7 +470,7 @@ bool Shape::sanityCheck()
 {
     vector<Line*>:: iterator l;
     if (lines.size() == 0) return true; //empty shapes are fine
-    if (lines.size() == 1)
+    if (lines.size() == 1) //This should be a point
     {
         if (lines[0]->point1 == lines[0]->point2)
         {
@@ -457,6 +485,12 @@ bool Shape::sanityCheck()
     {
         if ((*l)->point1 != previous->point2)
         {
+            cout << "Found a discrepency!" << endl;
+            JDL::circle((*l)->point1.x, (*l)->point1.y, 3);
+            JDL::circle(previous->point2.x, previous->point2.y, 3);
+            JDL::flush();
+            (*l)->point1.print();
+            previous->point2.print();
             return false;
         }
         previous = *l;
@@ -465,6 +499,12 @@ bool Shape::sanityCheck()
     //check that the last line connects with the first
     if (lines.back()->point2 != lines[0]->point1)
     {
+        cout << "The last line does not connect with the first" << endl;
+        JDL::circle((*l)->point1.x, (*l)->point1.y, 3);
+        JDL::circle(previous->point2.x, previous->point2.y, 3);
+        JDL::flush();
+        lines.back()->point2.print();
+        lines[0]->point1.print();
         return false;
     }
 
@@ -526,3 +566,52 @@ int Shape::lineIntersectsCrack(const Line &toCheck,
     delete intersect;
     return numIntersects;
 }
+
+void Shape::removeCracksOutside()
+{
+    vector<Line*>::iterator l;
+    vector<Crack*>::iterator c;
+    
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        c = (*l)->cracks.begin();
+        while (c != (*l)->cracks.end())
+        {
+            if (!inside((*c)->getFirstLine()->point2))
+            {
+                c = (*l)->cracks.erase(c);
+            }
+            else
+            {
+                ++c;
+            }
+        }
+    }
+}
+
+bool Shape::inside(Point toTest)
+{
+    Line ray(toTest, 42, 0);
+    int rayResult = rayTrace(ray);
+    return (rayResult % 2); //if odd, inside, if even, outside.
+}
+
+/*
+string Shape::generateJSON(int index)
+{
+    string toReturn;
+    stringstream streamy;
+    streamy << "Shape" << index << ": {";
+    toReturn = streamy.str();
+    vector<Line*>::iterator l;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        toReturn += (*l)->generateJSON();
+    }
+    vector<Shape*>::iterator s;
+    for (s = toDraw->begin(); s != toDraw->end(); ++s)
+    {
+        toReturn += 
+    }
+}
+*/

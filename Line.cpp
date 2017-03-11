@@ -38,8 +38,8 @@ Line::Line(const Line & other)
     this->point2 = other.point2;
     this->index = other.index;
 
-    vector<Crack*>::iterator i;
-    for (i = cracks.begin(); i != cracks.end(); ++i)
+    vector<Crack*>::const_iterator i;
+    for (i = other.cracks.begin(); i != other.cracks.end(); ++i)
     {
         this->cracks.push_back(new Crack(**i));
     }  
@@ -82,6 +82,9 @@ void Line::draw() const
     vector<Crack*>::const_iterator i;
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {
+        JDL::text(JDL::roundi((*i)->startPoint().x),
+                  JDL::roundi((*i)->startPoint().y),
+                  to_string(i - cracks.begin()).c_str());
         (*i)->draw();
     }
 }
@@ -189,7 +192,7 @@ bool Line::rayIntersects(const Line &otherLine, Point *resultPoint) const
 }
 
 //check if the two line segments intersect
-bool Line::intersects(const Line &otherLine, Point *resultPoint)
+bool Line::intersects(const Line &otherLine, Point *resultPoint) const
 {
     Point temp;
     if (!intersectsInfinite(otherLine, &temp))
@@ -204,6 +207,75 @@ bool Line::intersects(const Line &otherLine, Point *resultPoint)
     return false;
 }
 
+bool Line::on(const Point &testPoint, double radius, Point *resultPoint) const
+{
+    //get the line that goes through the point and is normal to this line.
+    Line normal(testPoint, 1, this->getDirection() + 90);
+    intersectsInfinite(normal, resultPoint);
+    if (resultPoint->near(testPoint, radius))
+    {
+        if (!inRect(*resultPoint))
+        {
+            if (resultPoint->near(this->point1, radius))
+            {
+                *resultPoint = this->point1;
+            }
+            else if (resultPoint->near(this->point2, radius))
+            {
+                *resultPoint = this->point2;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+//if the point is in the rectangle defined by the line.
+//(Note: horizantal and vertical lines would have zero thickness,
+// so they are given JDL::PRECISION thickness instead)
+bool Line::inRect(const Point &testPoint) const
+{
+    double maxY, minY, maxX, minX;
+    maxY = max(point2.y, point1.y);
+    minY = min(point2.y, point1.y);
+    maxX = max(point2.x, point1.x);
+    minX = min(point2.x, point1.x);
+
+    if (JDL::doublesEqual(minX, maxX))
+    { //vertical line
+        if (testPoint.y >= minY && testPoint.y <= maxY)
+        {
+            if (JDL::doublesEqual(testPoint.x, minX))
+            {
+                return true;
+            }
+        }
+    }
+    else if (JDL::doublesEqual(minY, maxY))
+    { //horizantal line
+        if (testPoint.x >= minX && testPoint.x <= maxX)
+        {
+            if (JDL::doublesEqual(testPoint.y, minY))
+            {
+                return true;
+            }
+        }
+    }
+    else if ((testPoint.x >= minX) && (testPoint.x <= maxX)
+        && (testPoint.y >= minY) && (testPoint.y <= maxY))
+    {
+        return true;
+    }
+    return false;
+}
+/*
 bool Line::on(const Point & testPoint, double radius, Point *resultPoint) const
 {
     double slope;
@@ -277,7 +349,7 @@ bool Line::on(const Point & testPoint, double radius, Point *resultPoint) const
     }
     return false;
 }
-
+*/
 //lazy implementation
 bool Line::on(const Point &testPoint) const
 {
@@ -312,28 +384,28 @@ void Line::createFracture(Point startPoint, Shape *parentShape, double force)
     cracks.back().increase(force);
     }
 */
-void Line::getImpactedCracks(Point impactPoint, Shape *parentShape, 
-                             double force, std::vector<Crack*> *impactedCracks)
+//returns the number of cracks found
+int Line::getImpactedCracks(Point clickPoint, Shape *parentShape, 
+                             vector<Crack*> *impactedCracks)
 {
     vector<Crack*>::iterator i;
     double radius = 10; //eventually, set the radius based on the force.
     int numCracks = 0;
-    impactPoint.print();
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {
-        if ((*i)->startPoint().near(impactPoint, radius))
+        if ((*i)->startPoint().near(clickPoint, radius))
         {
             impactedCracks->push_back(*i);
             numCracks++;
         }
     }
-    //eventually, do this based on force?
-    if (numCracks == 0)
-    {
-        cout << "Creating new crack." << endl;
-        cracks.push_back(new Crack(parentShape, impactPoint, this));
-        impactedCracks->push_back(cracks.back());
-    }
+    return numCracks;
+}
+
+Crack *Line::addCrack(Point impactPoint, Shape *parentShape)
+{
+    cracks.push_back(new Crack(parentShape, impactPoint, this));
+    return cracks.back();
 }
 
 /*             
@@ -433,7 +505,7 @@ void Line::switchPoints()
     point2 = temp;
 }
 
-double Line::getDirection()
+double Line::getDirection() const
 {
     double direction;
     direction = JDL::calculateTheta(point2.x-point1.x, point2.y-point1.y);

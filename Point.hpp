@@ -20,6 +20,8 @@ public:
     bool operator<(const Point &other) const;
 
     bool near(const Point &other, double radius);
+
+    void drawCircle(int radius) const;
 };
 
 #endif

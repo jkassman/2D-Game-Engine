@@ -35,6 +35,7 @@ public:
     void increase(double force);
     Point startPoint();
     Line *getStartLine();
+    Line *getFirstLine();
 
     bool isShapeSplit();
     bool shouldDelete();

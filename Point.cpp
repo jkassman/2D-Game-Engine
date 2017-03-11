@@ -93,3 +93,8 @@ bool Point::near(const Point &other, double radius)
     Line dist(*this, other);
     return (dist.length() < radius);
 }
+
+void Point::drawCircle(int radius) const
+{
+    JDL::circle(this->x, this->y, radius);
+}

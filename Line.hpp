@@ -42,9 +42,10 @@ public:
     bool rayIntersects(const Line &otherLine, Point *resultPoint) const;
     bool onRay(Point testPoint, double radius, Point *resultPoint);
     bool onRay(Point testPoint);
-    bool intersects(const Line &otherLine, Point *resultPoint);
+    bool intersects(const Line &otherLine, Point *resultPoint) const ;
     bool on(const Point & testPoint, double radius, Point *resultPoint) const;
     bool on(const Point & testPoint) const;
+    bool inRect(const Point &testPoint) const;
     bool operator==(const Line &other) const;
     bool coincident(const Line &other) const;
     //Line operator=(const Line &other);
@@ -59,12 +60,13 @@ public:
     //or just never create a new crack; keep to some density.
     //int increaseCracks(Point impactPoint, Shape *parentShape, double force);
 
-    void getImpactedCracks(Point impactPoint, Shape *parentShape, 
-                           double force, std::vector<Crack*> *impactedCracks);
+    int getImpactedCracks(Point clickPoint, Shape *parentShape, 
+                           std::vector<Crack*> *impactedCracks);
     void setCrackParents(Shape *crackParentShape);
 
-    double getDirection();
+    double getDirection() const;
     int deleteCrack(Crack *toDelete);
+    Crack *addCrack(Point impactPoint, Shape *parentShape);
 
 };
 

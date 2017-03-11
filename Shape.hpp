@@ -6,6 +6,7 @@
 #include "gfx_j.h"
 
 #include <vector>
+#include <string>
 
 //class Crack;
 //class Line;
@@ -23,6 +24,7 @@ private:
 
     bool sanityCheck();
     void debugDraw();
+    void removeCracksOutside();
 
 public:
     Shape(std::vector<Point> givenPoints, std::vector<Shape*> *toDraw);
@@ -40,6 +42,7 @@ public:
     int rayTrace(Line &ray);
 
     void addPoint(Point toAdd);
+    Crack *addCrack(Point impactPoint);
     int fractureAt(Point clickPoint);
     void split (std::vector<Line*> &splitLines);
 
@@ -57,6 +60,8 @@ public:
                              std::vector<Crack*> *intersectCracks,
                             std::vector<Point> *intersectPoints,
                             Crack *crackToIgnore) const;
+
+    std::string generateJSON(int index);
 };
 
 void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2);
