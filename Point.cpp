@@ -4,6 +4,7 @@
 #include "Line.hpp"
 
 #include <iostream>
+#include <sstream>
 
 using namespace std;
 
@@ -97,4 +98,15 @@ bool Point::near(const Point &other, double radius)
 void Point::drawCircle(int radius) const
 {
     JDL::circle(this->x, this->y, radius);
+}
+
+string Point::generateJSON() const
+{
+    string toReturn;
+    stringstream streamy;
+    streamy << "{" << "\"x\": " << x
+            << "," << "\"y\": " << y;
+    toReturn = streamy.str();
+    toReturn += "}";
+    return toReturn;
 }

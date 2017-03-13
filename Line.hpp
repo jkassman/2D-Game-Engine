@@ -2,6 +2,7 @@
 #define LINE_HPP
 
 #include <vector>
+#include <string>
 
 #include "Shape.hpp"
 #include "Crack.hpp"
@@ -23,7 +24,7 @@ public:
     
     Point point1;
     Point point2;
-    int index;
+    //int index;
 
     Line();
     Line(const Line &other);
@@ -33,6 +34,7 @@ public:
     //Line(const Line & other);
     void move(double distance, double degrees);
     void draw() const;
+    void draw(int index) const;
     double length() const;
 
     void switchPoints();
@@ -67,6 +69,8 @@ public:
     double getDirection() const;
     int deleteCrack(Crack *toDelete);
     Crack *addCrack(Point impactPoint, Shape *parentShape);
+
+    std::string generateJSON();
 
 };
 

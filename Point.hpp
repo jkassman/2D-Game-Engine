@@ -1,6 +1,8 @@
 #ifndef POINT_HPP
 #define POINT_HPP
 
+#include <string>
+
 //simple 2D point.
 class Point
 {
@@ -22,6 +24,8 @@ public:
     bool near(const Point &other, double radius);
 
     void drawCircle(int radius) const;
+
+    std::string generateJSON() const;
 };
 
 #endif

@@ -7,6 +7,7 @@
 #include <iostream>
 #include <math.h>
 #include <string>
+#include <sstream>
 
 #include <stdio.h>
 
@@ -36,7 +37,7 @@ Line::Line(const Line & other)
 {
     this->point1 = other.point1;
     this->point2 = other.point2;
-    this->index = other.index;
+    //this->index = other.index;
 
     vector<Crack*>::const_iterator i;
     for (i = other.cracks.begin(); i != other.cracks.end(); ++i)
@@ -67,18 +68,20 @@ string to_string(int lazy)
 }
 #endif
 
-void Line::draw() const
+void Line::draw(int index) const
 {
-    JDL::line(JDL::roundi(point1.x), JDL::roundi(point1.y),
-              JDL::roundi(point2.x), JDL::roundi(point2.y));
-//#define DRAW_LINE_TEXT
-#ifdef DRAW_LINE_TEXT
+    draw();
     double dx = point2.x - point1.x;
     double dy = point2.y - point1.y;
     JDL::text(JDL::roundi(point1.x + dx/2), 
               JDL::roundi(point1.y + dy/2), 
               to_string(index).c_str());
-#endif
+}
+
+void Line::draw() const
+{
+    JDL::line(JDL::roundi(point1.x), JDL::roundi(point1.y),
+              JDL::roundi(point2.x), JDL::roundi(point2.y));
     vector<Crack*>::const_iterator i;
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {
@@ -368,22 +371,6 @@ bool Line::coincident(const Line &other) const
     return (on(other.point1) && on(other.point2));
 }
 
-/*
-Line Line::operator=(const Line &other)
-{
-    point1 = other.point1;
-    point2 = other.point2;
-    index = other.index;
-    cracks = other.cracks;
-    return *this;
-}
-
-void Line::createFracture(Point startPoint, Shape *parentShape, double force)
-{
-    cracks.push_back(Crack(parentShape, startPoint, this));
-    cracks.back().increase(force);
-    }
-*/
 //returns the number of cracks found
 int Line::getImpactedCracks(Point clickPoint, Shape *parentShape, 
                              vector<Crack*> *impactedCracks)
@@ -476,7 +463,7 @@ void Line::split(Point splitPoint, Line *newLine)
     {
         cerr << "The split point is on the end point of the line!" << endl;
     }
-    newLine->index = index;
+    //newLine->index = index;
     newLine->point1 = splitPoint;
     newLine->point2 = point2;
 
@@ -548,4 +535,31 @@ void drawLines(vector<Line*> toDraw, double secondsToSleep)
         JDL::flush();
         JDL::sleep(secondsToSleep);
     }
+}
+
+string Line::generateJSON()
+{
+    string toReturn;
+    stringstream streamy;
+    //streamy << "Line" << index << ": {";
+    //toReturn = streamy.str();
+    streamy << "{" << "\"point1:\"" << point1.generateJSON()
+            << "," << "\"point2:\"" << point2.generateJSON();
+    toReturn = streamy.str();
+    if (cracks.size() > 0)
+    {
+        toReturn += ", \"cracks\": [";
+        vector<Crack*>::iterator c;
+        for (c = cracks.begin(); c != cracks.end(); ++c)
+        {
+            toReturn += (*c)->generateJSON();
+            if (c+1 != cracks.end())
+            {
+                toReturn += ",";
+            }
+        }
+        toReturn += "]";
+    }
+    toReturn += "}";
+    return toReturn;
 }

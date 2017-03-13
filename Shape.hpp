@@ -26,6 +26,8 @@ private:
     void debugDraw();
     void removeCracksOutside();
 
+    static int saveNum;
+
 public:
     Shape(std::vector<Point> givenPoints, std::vector<Shape*> *toDraw);
     Shape(std::vector<Line*> &givenLines, std::vector<Shape*> *toDraw);
@@ -61,7 +63,10 @@ public:
                             std::vector<Point> *intersectPoints,
                             Crack *crackToIgnore) const;
 
-    std::string generateJSON(int index);
+    std::string generateJSON();
+    
+    void save(std::string filename);
+
 };
 
 void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2);

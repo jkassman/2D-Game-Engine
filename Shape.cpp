@@ -6,7 +6,8 @@
 #include <iostream>
 #include <algorithm>
 #include <math.h>
-#include <sstream>
+#include <ofstream>
+//#include <sstream>
 
 using namespace std;
 Shape::Shape(vector<Point> givenPoints, vector<Shape*> *toDraw)
@@ -142,7 +143,7 @@ void Shape::addPoint(Point toAdd)
         lines.back()->point2 = toAdd;
         lines.push_back(new Line(toAdd, lines[0]->point1));
     }
-    lines.back()->index = lines.size()-1;
+    //lines.back()->index = lines.size()-1;
 }
 
 bool Shape::lineOnBorder(const Line &toCheck) const
@@ -341,7 +342,7 @@ void Shape::grabShapeLines(Point startPoint, Point endPoint,
       then either split or not.
       If split, edit shape to have both pieces
     */
-    int index = 0;
+    //int index = 0;
     
     //note: we may have to wrap around the shape here
     //the only exit is via breaks. yay standards.
@@ -357,22 +358,22 @@ void Shape::grabShapeLines(Point startPoint, Point endPoint,
             else if (endPoint == (*l)->point2)
             {
                 result->push_back(*l);
-                (*l)->index = index;
+                //(*l)->index = index;
                 break;
             }
             else
             {
                 Line *newLine = new Line();
                 (*l)->split(endPoint, newLine);
-                (*l)->index = index;
+                //(*l)->index = index;
                 result->push_back(*l);
                 lines.insert(l+1, newLine);
                 break;
             }
         }
         result->push_back(*l);
-        (*l)->index = index;
-        index++;
+        //(*l)->index = index;
+        //index++;
         ++l;
         if (l == lines.end())
         {
@@ -385,7 +386,7 @@ void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
 {    
 
     Line *lastLine1 = lines1->back();
-    int index = lastLine1->index + 1;
+    //int index = lastLine1->index + 1;
 
     Point lastPoint2 = lines2.back()->point2;
     Point firstPoint2 = lines2[0]->point1;
@@ -398,8 +399,8 @@ void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
         vector<Line*>::iterator i;
         for (i = lines2.begin(); i != lines2.end(); ++i)
         {
-            (*i)->index = index;
-            index++;
+            //(*i)->index = index;
+            //index++;
             lines1->push_back(*i);
         }
     }
@@ -411,8 +412,8 @@ void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
         vector<Line*>::reverse_iterator i;
         for (i = lines2.rbegin(); i != lines2.rend(); ++i)
         {
-            (*i)->index = index;
-            index++;
+            //(*i)->index = index;
+            //index++;
 
             //switch point1 and point2.
             (*i)->switchPoints();
@@ -428,10 +429,10 @@ void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
         for (debug = lines1->begin(); debug != lines1->end(); ++debug)
         {
             cin >> garbage;
-            int tempIndex = (*debug)->index;
-            (*debug)->index = 1;
-            (*debug)->draw();
-            (*debug)->index = tempIndex;
+            //int tempIndex = (*debug)->index;
+            //(*debug)->index = 1;
+            (*debug)->draw(1);
+            //(*debug)->index = tempIndex;
             JDL::flush();
         }
 
@@ -442,10 +443,10 @@ void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
         for (debug = lines2.begin(); debug != lines2.end(); ++debug)
         {
             cin >> garbage;
-            int tempIndex = (*debug)->index;
-            (*debug)->index = 2;
-            (*debug)->draw();
-            (*debug)->index = tempIndex;
+            //int tempIndex = (*debug)->index;
+            //(*debug)->index = 2;
+            (*debug)->draw(2);
+            //(*debug)->index = tempIndex;
             JDL::flush();
         }
     }
@@ -526,7 +527,7 @@ void Shape::debugDraw()
     for (l = lines.begin(); l != lines.end(); ++l)
     {
         (*l)->draw();
-        cout << "Drew line " << (*l)->index << "." << endl;
+        cout << "Drew line " << l - lines.begin() << "." << endl;
         JDL::flush();
         JDL::sleep(1);
     }
@@ -596,22 +597,31 @@ bool Shape::inside(Point toTest)
     return (rayResult % 2); //if odd, inside, if even, outside.
 }
 
-/*
-string Shape::generateJSON(int index)
+
+string Shape::generateJSON()
 {
     string toReturn;
-    stringstream streamy;
-    streamy << "Shape" << index << ": {";
-    toReturn = streamy.str();
+    //stringstream streamy;
+    //streamy << "\"Shape" << index << "\": {";
+    //toReturn = streamy.str();
+    toReturn = "[";
     vector<Line*>::iterator l;
     for (l = lines.begin(); l != lines.end(); ++l)
     {
         toReturn += (*l)->generateJSON();
+        if (l + 1 != lines.end())
+        {
+            toReturn += ",";
+        }
     }
-    vector<Shape*>::iterator s;
-    for (s = toDraw->begin(); s != toDraw->end(); ++s)
-    {
-        toReturn += 
-    }
+    toReturn += "]";
+    return toReturn;
 }
-*/
+
+void save(string fileName)
+{
+    ofstream outFile;
+}
+
+int Shape::saveNum = 0;
+

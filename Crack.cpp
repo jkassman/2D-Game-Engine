@@ -290,7 +290,7 @@ void Crack::addPoint(Point toAdd)
     {
         lines.push_back(new Line(lines.back()->point2, toAdd));
     }
-    lines.back()->index = lines.size()-1;
+    //lines.back()->index = lines.size()-1;
 }
 
 
@@ -433,4 +433,22 @@ bool Crack::lineIntersects(const Line &toCheck, Point *intersect)
         }
     }
     return false;
+}
+
+string Crack::generateJSON()
+{
+    string toReturn;
+    vector<Line*>::iterator l;
+    
+    toReturn = "[";
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        toReturn += (*l)->generateJSON();
+        if (l + 1 != lines.end())
+        {
+            toReturn += ",";
+        }
+    }
+    toReturn += "]";
+    return toReturn;
 }

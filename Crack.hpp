@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <vector>
+#include <string>
 
 class Line;
 class Shape;
@@ -47,6 +48,8 @@ public:
     void draw() const;
 
     bool lineIntersects(const Line &toCheck, Point *intersect);
+
+    std::string generateJSON();
 };
 
 #endif
