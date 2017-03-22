@@ -30,6 +30,7 @@ private:
 public:
     Crack(Shape *parentShape, Point startPoint, Line *startLine);
     Crack(Shape *parentShape, const std::vector<Line*> &newLines, Line *start);
+    Crack(std::string jsonString, Line *startLine);
     Crack(const Crack &other);
 
     //force is a measure of how much the crack should increase in length
@@ -48,6 +49,8 @@ public:
     void draw() const;
 
     bool lineIntersects(const Line &toCheck, Point *intersect);
+
+    bool sanityCheck(Shape *parentShape, Line *startLine); //NOTE: sanityCheck MODIFIES to make sane!
 
     std::string generateJSON();
 };

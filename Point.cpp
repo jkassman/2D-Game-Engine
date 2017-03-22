@@ -26,6 +26,16 @@ Point::Point(const Point &other)
     this->y = other.y;
 }
 
+Point::Point(string jsonString)
+{
+    string xString, yString;
+    xString = grabJsonValue(jsonString, "x");
+    yString = grabJsonValue(jsonString, "y");
+
+    this->x = stod(xString);
+    this->y = stod(yString);
+}
+
 void Point::print() const
 {
 	cout << "(" << x << "," << y << ")" << endl;
@@ -104,8 +114,8 @@ string Point::generateJSON() const
 {
     string toReturn;
     stringstream streamy;
-    streamy << "{" << "\"x\": " << x
-            << "," << "\"y\": " << y;
+    streamy << "{" << "\"x\":" << x
+            << "," << "\"y\":" << y;
     toReturn = streamy.str();
     toReturn += "}";
     return toReturn;

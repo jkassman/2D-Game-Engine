@@ -58,6 +58,7 @@ int main(int argc, char **argv)
         }
 
     //interpret input
+        vector <Line*> newLines;
         switch (input)
         {
         case 'q':
@@ -71,6 +72,11 @@ int main(int argc, char **argv)
         case 'f':
             mode = 0;
             break;
+        case 'l':
+            toDraw.clear(); //memory leaks yay
+            loadLines("toLoad.txt", &newLines);
+            toDraw.push_back(new Shape(newLines, &toDraw));
+            toDraw.back()->updateCrackParents();
         case 1:
             //handle modes
             switch (mode)
@@ -79,7 +85,7 @@ int main(int argc, char **argv)
                 building->addPoint(Point(x, y));
                 break;
             case 0:
-                cout << "clicked!" << endl;
+                //cout << "clicked!" << endl;
                 toDrawSize = toDraw.size();
                 for (j = 0; j < toDrawSize; j++)
                 {
@@ -88,7 +94,7 @@ int main(int argc, char **argv)
                         break;
                     }
                 }
-                cout << "time to draw!" << endl;
+                //cout << "time to draw!" << endl;
                 break;
             }
         }

@@ -47,6 +47,7 @@ public:
     Crack *addCrack(Point impactPoint);
     int fractureAt(Point clickPoint);
     void split (std::vector<Line*> &splitLines);
+    void updateCrackParents();
 
     void grabShapeLines(Point startPoint, Point endPoint,
                         std::vector<Line*> *result);
@@ -70,5 +71,9 @@ public:
 };
 
 void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2);
+void loadLines(std::string fileName, std::vector<Line*> *toFill);
+void parseJsonList(std::string *jsonString, std::vector<std::string> *toFill);
+std::string grabJsonObject(std::string *jsonString);
+std::string grabJsonValue(std::string jsonString, std::string value);
 
 #endif

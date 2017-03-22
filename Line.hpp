@@ -30,6 +30,7 @@ public:
     Line(const Line &other);
     Line(Point point1, Point point2);
     Line(Point point1, double length, double direction);
+    Line(std::string jsonString);
 
     //Line(const Line & other);
     void move(double distance, double degrees);
@@ -72,6 +73,7 @@ public:
 
     std::string generateJSON();
 
+    bool sanityCheck(Shape *parentShape);
 };
 
 void drawLines(std::vector<Line*> toDraw, double secondsToSleep);

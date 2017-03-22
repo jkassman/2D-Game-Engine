@@ -6,6 +6,7 @@
 #include <math.h>
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 
 using namespace std;
 
@@ -32,6 +33,36 @@ Crack::Crack(Shape *parentShape, const vector<Line*> &newLines, Line *start)
     for (l = newLines.begin(); l != newLines.end(); ++l)
     {
         addPoint((*l)->point2);
+    }
+}
+
+Crack::Crack(string jsonString, Line *startLine)
+{
+    string intersectCrackStr, doDeleteStr, pointStr, shapeSplitStr;
+
+    intersectCrackStr = grabJsonValue(jsonString, "intersectCrack");
+    doDeleteStr = grabJsonValue(jsonString, "doDelete");
+    pointStr = grabJsonValue(jsonString, "point");
+    shapeSplitStr = grabJsonValue(jsonString, "shapeSplit");
+    string linesString = grabJsonValue(jsonString, "lines");
+
+    this->intersectCrack = NULL;
+    if (intersectCrackStr != "false")
+    {
+        cerr << "intersectCrack was not Null. Cannot recreate!" << endl;
+    }
+    this->doDelete = (doDeleteStr == "true");
+    this->startLine = startLine;
+    this->parentShape = NULL;
+    this->point = (pointStr == "true");
+    this->shapeSplit = (shapeSplitStr == "true");
+
+    vector<string> jsonLines;
+    vector<string>::iterator i;
+    parseJsonList(&linesString, &jsonLines);
+    for (i = jsonLines.begin(); i != jsonLines.end(); ++i)
+    {
+        lines.push_back(new Line(*i));
     }
 }
 
@@ -242,7 +273,8 @@ void Crack::increase(double force)
     }
 */
     addPoint(fractureLine.point2);
-    cout << "exiting increase()" << endl;
+    //cout << "exiting increase()" << endl;
+    parentShape->save("saves/After_Increase.txt");
     JDL::setDrawColor(0, 255, 0);
     fractureLine.draw();
     JDL::setDrawColor(255,255,255);
@@ -368,6 +400,7 @@ void Crack::getSplitLines(vector<Line*> *splitLines)
 
         //Step 3: reassign newCrack to lines.back()
         intersectCrack->lines.assign(newCrack.begin(), newCrack.end());
+        intersectCrack->startLine = lines.back();
         //intersectCrack->shapeSplit = false;
         lines.back()->cracks.push_back(intersectCrack);
 
@@ -435,12 +468,44 @@ bool Crack::lineIntersects(const Line &toCheck, Point *intersect)
     return false;
 }
 
+//NOTE: sanityCheck MODIFIES to make sane!
+bool Crack::sanityCheck(Shape *parentShape, Line *startLine)
+{
+    bool toReturn = true;
+    if (parentShape != this->parentShape)
+    {
+        toReturn = false;
+        cerr << "Insanity! Wrong parentShape found. Fixing..." << endl;
+        this->parentShape = parentShape;
+    }
+    if (startLine != this->startLine)
+    {
+        toReturn = false;
+        cerr << "Insanity! Wrong startLine found. Fixing..." << endl;
+        this->startLine = startLine;
+    }
+    return toReturn;
+}
+
 string Crack::generateJSON()
 {
     string toReturn;
     vector<Line*>::iterator l;
+    stringstream streamy;
     
-    toReturn = "[";
+    //note: parentShape and startLine NOT tracked
+    streamy << "{";
+    streamy <<"\"intersectCrack\":" << ((intersectCrack) ? "true" : "false");
+    streamy << ",\"parentShape\":" << ((parentShape) ? "true" : "false"); //debug only
+    streamy << ",\"doDelete\":" << ((doDelete) ? "true" : "false");
+    streamy << ",\"point\":" << ((point) ? "true" : "false");
+    streamy << ",\"shapeSplit\":" << ((shapeSplit) ? "true" : "false");
+    streamy << ",\"lines\":";
+
+
+    toReturn = streamy.str();
+
+    toReturn += "[";
     for (l = lines.begin(); l != lines.end(); ++l)
     {
         toReturn += (*l)->generateJSON();
@@ -450,5 +515,6 @@ string Crack::generateJSON()
         }
     }
     toReturn += "]";
+    toReturn += "}";
     return toReturn;
 }

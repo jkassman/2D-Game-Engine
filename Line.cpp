@@ -46,6 +46,34 @@ Line::Line(const Line & other)
     }  
 }
 
+Line::Line(std::string jsonString)
+{
+    string jsonPoint1, jsonPoint2, jsonCracksString;
+    vector<string> jsonCracks;
+    vector<string>::iterator i;
+    
+    jsonPoint1 = grabJsonValue(jsonString, "point1");
+    jsonPoint2 = grabJsonValue(jsonString, "point2");
+    jsonCracksString = grabJsonValue(jsonString, "cracks");
+
+    if (jsonCracksString.length())
+    {
+        parseJsonList(&jsonCracksString, &jsonCracks);
+
+        for (i = jsonCracks.begin(); i != jsonCracks.end(); ++i)
+        {
+            this->cracks.push_back(new Crack(*i, this));
+        }
+    }
+    /*
+    cout << "Point1: " << jsonPoint1 << " | Point2: " << jsonPoint2
+        << " | Cracks: " << jsonCracks << endl;
+    */
+
+    this->point1 = Point(jsonPoint1);
+    this->point2 = Point(jsonPoint2);
+}
+
 void Line::move(double distance, double degrees)
 {
     point1.x += cos(degrees/180*M_PI)*distance;
@@ -85,9 +113,11 @@ void Line::draw() const
     vector<Crack*>::const_iterator i;
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {
+        /*
         JDL::text(JDL::roundi((*i)->startPoint().x),
                   JDL::roundi((*i)->startPoint().y),
                   to_string(i - cracks.begin()).c_str());
+         */
         (*i)->draw();
     }
 }
@@ -543,12 +573,12 @@ string Line::generateJSON()
     stringstream streamy;
     //streamy << "Line" << index << ": {";
     //toReturn = streamy.str();
-    streamy << "{" << "\"point1:\"" << point1.generateJSON()
-            << "," << "\"point2:\"" << point2.generateJSON();
+    streamy << "{" << "\"point1\":" << point1.generateJSON()
+            << "," << "\"point2\":" << point2.generateJSON();
     toReturn = streamy.str();
     if (cracks.size() > 0)
     {
-        toReturn += ", \"cracks\": [";
+        toReturn += ",\"cracks\":[";
         vector<Crack*>::iterator c;
         for (c = cracks.begin(); c != cracks.end(); ++c)
         {
@@ -561,5 +591,19 @@ string Line::generateJSON()
         toReturn += "]";
     }
     toReturn += "}";
+    return toReturn;
+}
+
+bool Line::sanityCheck(Shape *parentShape)
+{
+    vector<Crack*>::iterator c;
+    bool toReturn = true;
+    for (c = cracks.begin(); c != cracks.end(); ++c)
+    {
+        if (!(*c)->sanityCheck(parentShape, this))
+        {
+            toReturn = false;
+        }
+    }
     return toReturn;
 }

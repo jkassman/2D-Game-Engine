@@ -6,7 +6,7 @@
 #include <iostream>
 #include <algorithm>
 #include <math.h>
-#include <ofstream>
+#include <fstream>
 //#include <sstream>
 
 using namespace std;
@@ -89,6 +89,7 @@ Crack *Shape::addCrack(Point impactPoint)
 //returns how many cracks were affected
 int Shape::fractureAt(Point clickPoint)
 {
+    save("saves/Before_Click.txt");
     vector<Crack*> impactedCracks;
     vector<Line*>::iterator i;
     double force = 50;
@@ -116,7 +117,7 @@ int Shape::fractureAt(Point clickPoint)
     //now update the cracks that we have gathered.
     vector<Crack*>::iterator c;
     vector<Line*> splitLines;
-    cout << impactedCracks.size() << endl;
+    //cout << impactedCracks.size() << endl;
     for (c = impactedCracks.begin(); c != impactedCracks.end(); ++c)
     {
         //eventually, modify force here based on size of impactedCracks
@@ -211,21 +212,26 @@ void Shape::split(vector<Line*> &splitLines)
     Point crackStartPoint, crackEndPoint;
     crackStartPoint = splitLines[0]->point1;
     crackEndPoint = splitLines.back()->point2;
-
+    if (crackStartPoint == crackEndPoint)
+    {
+        cerr << "PROBLEMS!!!!" << endl;
+    }
+#ifdef ND_RESEARCH_DEBUG
     crackStartPoint.drawCircle(3);
     crackEndPoint.drawCircle(3);
     JDL::flush();
     JDL::sleep(1);
-        
+#endif
     grabShapeLines(crackStartPoint, crackEndPoint, &lines1);
     grabShapeLines(crackEndPoint, crackStartPoint, &lines2);
+#ifdef ND_RESEARCH_DEBUG
     JDL::setDrawColor(0, 0, 255);
     drawLines(lines1, 0);
     JDL::setDrawColor(255, 255, 0);
     drawLines(lines2, 0);
     //JDL::sleep(5);
     JDL::setDrawColor(255, 255, 255);
-
+#endif
 
     /*
       Finished grabbing the relevant lines from the shape.
@@ -282,15 +288,23 @@ void Shape::split(vector<Line*> &splitLines)
     newShape->accelerate(0.42, newDirection);
 
     //Set all the cracks in the new shape to have their parent be newShape
-    for (l = newShape->lines.begin(); l != newShape->lines.end(); ++l)
-    {
-        (*l)->setCrackParents(newShape);
-    }
+    newShape->updateCrackParents();
+    updateCrackParents();
                      
 
     //TODO: Delete splitlines here! We made two copies
     
     cout << "Finished the split" << endl;
+    save("saves/After_Split.txt");
+}
+
+void Shape::updateCrackParents()
+{
+    vector<Line*>::iterator l;
+    for (l = this->lines.begin(); l != this->lines.end(); ++l)
+    {
+        (*l)->setCrackParents(this);
+    }
 }
 
 //grabs all lines in between startPoint and endPoint
@@ -469,7 +483,13 @@ void Shape::accelerate(double acceleration, double degrees)
 //TODO: this is a quick sanity check. Figure 8s won't be checked.
 bool Shape::sanityCheck()
 {
-    vector<Line*>:: iterator l;
+    vector<Line*>::iterator l;
+    vector<Crack*>::iterator c;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        (*l)->sanityCheck(this);
+    }
+
     if (lines.size() == 0) return true; //empty shapes are fine
     if (lines.size() == 1) //This should be a point
     {
@@ -479,7 +499,6 @@ bool Shape::sanityCheck()
         }
         return false;
     }
-
     //at this point, lines has 2+ lines
     Line *previous = lines[0];
     for (l = lines.begin() + 1; l != lines.end(); ++l)
@@ -618,10 +637,167 @@ string Shape::generateJSON()
     return toReturn;
 }
 
-void save(string fileName)
+void Shape::save(string fileName)
 {
-    ofstream outFile;
+    ofstream outFile(fileName);
+    outFile << generateJSON();
+    outFile.close();
+}
+
+//JSON Notes: no whitespace. All list objects encapsulated in {}.
+//Also: for cracks, startLine and parentShape are regenerated.
+//If the save of the crash works, look into those.
+void loadLines(string fileName, vector<Line*> *toFill)
+{
+    vector<string> jsonLines;
+    vector<string>::iterator i;
+    string jsonString;
+
+    //load the file into the string
+    ifstream inFile(fileName);
+    getline(inFile, jsonString);
+   
+    //get all the json objects into a vector
+    parseJsonList(&jsonString, &jsonLines);
+
+    //create the lines from the json objects
+    for (i = jsonLines.begin(); i != jsonLines.end(); ++i)
+    {
+        toFill->push_back(new Line(*i));
+    }
+    /*
+    char nextChar;
+    string lineObject;
+    do 
+    {
+        nextChar = jsonString[0];
+        if (nextChar == '{')
+        {
+            lineObject = grabJsonObject(&jsonString);
+            cout << lineObject << endl;
+            //toFill->push_back(new Line(lineObject));
+            toFill->push_back(new Line(Point(100, 100), 100, 45));
+        }
+        else
+        {
+            jsonString.erase(0, 1);
+        }
+    } while (nextChar != ']');
+    */
 }
 
 int Shape::saveNum = 0;
 
+//destroys original list
+//expects every item in the list to be surrounded by {}
+void parseJsonList(string *jsonString, vector<string> *toFill)
+{
+    if (jsonString->front() != '[')
+    {
+        cerr << "Invalid JSON passed to parseJsonList" << endl;
+        return;
+    }
+    jsonString->erase(0, 1); //erase the [
+
+    while (jsonString->front() != ']')
+    {
+        if (jsonString->front() == ',')
+        {
+            jsonString->erase(0, 1);
+        }
+        toFill->push_back(grabJsonObject(jsonString));
+        //cout << toFill->back() << endl;
+    }
+    jsonString->erase(0, 1); //erase the ]
+}
+
+//object must be surrounded by {} or []
+string grabJsonObject(string *jsonString)
+{
+    if ((jsonString->front() != '{') && (jsonString->front() != '['))
+    {
+        cerr << "Invalid JSON passed to grabJsonObject!" << endl;
+        return *jsonString;
+    }
+    int levelsDown = 0;
+    string toReturn;
+    do 
+    {
+        toReturn.push_back(jsonString->front());
+        if ((jsonString->front() == '}') || (jsonString->front() == ']'))
+        {
+            levelsDown--;
+        }
+        else if ((jsonString->front() == '{') || (jsonString->front() == '['))
+        {
+            levelsDown++;
+        }
+        jsonString->erase(0, 1);
+    } while (levelsDown > 0);
+    return toReturn;
+}
+
+//does NOT modify jsonString
+//returns "" if it cannot find the value in the dict
+string grabJsonValue(string jsonString, string value)
+{
+    //scan to find a match
+    int i, valueIndex;
+    valueIndex = 0;
+    for (i = 0; i < jsonString.length(); i++)
+    {
+        if (jsonString[i] == value[valueIndex])
+        {
+            valueIndex++;
+        }
+        else
+        {
+            valueIndex = 0;
+        }
+        if (valueIndex == value.length())
+        {
+            //found a match!
+            break;
+        }
+    }
+
+    if (valueIndex != value.length())
+    {
+        //could not find that value
+        return "";
+    }
+
+    if ((jsonString[i + 1] != '\"') || (jsonString[i + 2] != ':'))
+    {
+        cerr << "Invalid JSON found in grabJsonValue" << endl;
+        return "";
+    }
+
+    i += 3;
+
+    int levelsDown = 0;
+    string toReturn = "";
+
+    while (true)
+    {
+        if (levelsDown == 0)
+        {
+            if ((jsonString[i] == '}') || (jsonString[i] == ','))
+            {
+                break;
+            }
+        }
+        if ((jsonString[i] == '{') || (jsonString[i] == '['))
+        {
+            levelsDown++;
+        }
+        else if ((jsonString[i] == '}') || (jsonString[i] == ']'))
+        {
+            levelsDown--;
+        }
+
+        toReturn += jsonString[i];
+        i++;
+    }
+    return toReturn;
+}

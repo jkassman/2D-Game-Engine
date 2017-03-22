@@ -14,6 +14,7 @@ public:
     Point();
     Point(double x, double y);
     Point(const Point &other);
+    Point(std::string jsonString);
     void print() const;
     Point operator=(const Point &other);
     bool operator==(const Point &other) const;
