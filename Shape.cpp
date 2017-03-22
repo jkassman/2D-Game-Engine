@@ -152,6 +152,19 @@ void Shape::addPoint(Point toAdd)
     //lines.back()->index = lines.size()-1;
 }
 
+bool Shape::containsLine(Line *toCheck) const
+{
+    vector<Line*>::const_iterator l;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        if ((*l) == toCheck)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool Shape::lineOnBorder(const Line &toCheck) const
 {
     vector<Line*>::const_iterator l;
@@ -221,6 +234,7 @@ void Shape::split(vector<Line*> &splitLines)
     {
         cerr << "PROBLEMS!!!!" << endl;
     }
+#define ND_RESEARCH_DEBUG
 #ifdef ND_RESEARCH_DEBUG
     crackStartPoint.drawCircle(3);
     crackEndPoint.drawCircle(3);

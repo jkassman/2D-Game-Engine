@@ -15,6 +15,7 @@ void Crack::init(Shape *parentShape, Point startPoint, Line *startLine)
     this->shapeSplit = false;
     this->doDelete = false;
     this->intersectCrack = NULL;
+    this->parentCrack = NULL;
     
     this->startLine = startLine;
     this->parentShape = parentShape;
@@ -54,7 +55,6 @@ Crack::Crack(string jsonString, Line *startLine)
     this->doDelete = (doDeleteStr == "true");
     this->startLine = startLine;
     this->parentShape = NULL;
-    this->point = (pointStr == "true");
     this->shapeSplit = (shapeSplitStr == "true");
 
     vector<string> jsonLines;
@@ -69,10 +69,10 @@ Crack::Crack(string jsonString, Line *startLine)
 Crack::Crack(const Crack &other)
 {   
     this->intersectCrack = other.intersectCrack;
+    this->parentCrack = other.parentCrack;
     this->doDelete = other.doDelete;
     this->startLine = other.startLine;
     this->parentShape = other.parentShape;
-    this->point = other.point;
     this->shapeSplit = other.shapeSplit;
     
     //std::vector<Line*> lines;
@@ -83,15 +83,8 @@ Crack::Crack(const Crack &other)
     }
 }
 
-void Crack::increase(double force)
+void Crack::increaseOne(double force)
 {
-    if (shapeSplit)
-    {
-        cerr << "Cannot increase crack that has already split the shape!"
-             << endl;
-        return;
-    }
-
     //New Idea:
     //Create lines with random slopes starting from the given point until
     //One of those lines points towards the inside of the shape
@@ -114,7 +107,7 @@ void Crack::increase(double force)
         double degree;
         
         //create a random slope of the line
-        if (point)
+        if (isPoint())
         {
             degree = JDL::randDouble(0, 360);
             //degree = rand() % 360;
@@ -123,7 +116,7 @@ void Crack::increase(double force)
         {
             double direction = lines.back()->getDirection();
             double modifier = JDL::randDouble(-turnDegrees/2, turnDegrees/2);
-            //modifier = 25; //temporary debug lock
+            //modifier = 45; //temporary debug lock
             degree = direction + modifier;
         }
 
@@ -135,6 +128,7 @@ void Crack::increase(double force)
         JDL::flush();
 
         bool badLine = false;
+        /*
         vector<Line*>::iterator l;
         //if it intersects itself, choose a new line
         Point selfIntersect;
@@ -148,14 +142,30 @@ void Crack::increase(double force)
                 }
             }
         }
+        */
+         //if it intersects itself, choose a new line
+        Point selfIntersect;
+        if (getTopParentCrack()->lineIntersectsIgnore(fractureLine,
+                                                      fractureLine.point1))
+        {
+            //JDL::sleep(0.5);
+            badLine = true;
+        }
+
 
         if (badLine) 
         {
 //            JDL::sleep(1);
             turnDegrees += 10;
+            force *= 0.8;
             if (turnDegrees > 360)
             {
                 turnDegrees = 360;
+            }
+            if (force < 1)
+            {
+                cerr << "Cannot increase this line" << endl; 
+                return;
             }
             continue;
         }
@@ -212,20 +222,14 @@ void Crack::increase(double force)
     numCrackIntersects = parentShape->lineIntersectsCrack(fractureLine, 
                                                            &intersectCracks, 
                                                            &intersectPoints,
-                                                           this);
-    /*
-    int counter;
-    for (counter = 0; counter < numCrackIntersects; counter++)
-    {
-        intersectLines.push_Back(NULL);
-    }
-    */
+                                                          getTopParentCrack());
 
     numIntersects += numCrackIntersects;
     //Line *shapeLine = NULL;
     if (numIntersects > 0)
     {
-        shapeSplit = true;
+        //getTopParentCrack()->shapeSplit = true;
+        temp = this;
         if (intersectCracks[0])
         {
             //Note: this is a private variable
@@ -242,36 +246,12 @@ void Crack::increase(double force)
                 fractureLine.point2 = *p;
                 intersectCrack = intersectCracks[p-intersectPoints.begin()];
             }
-        }
+        }       
+    }
+    
+    getTopParentCrack()->intersectCrack = intersectCrack;
+    intersectCrack = NULL;
 
-        //
-        
-        //TODO: handle case where numIntersects > 1!
-    }
-/*
-    if (numIntersects > 0)
-    {
-        fractureLine.point2 = intersectPoints[0];
-        shapeLine = intersectLines[0];
-        if (numIntersects > 1)
-        {
-            //if there are multiple intersects, choose the closest edge
-            vector<Point>::iterator j;
-            vector<Line*>::iterator shapeLineIter = intersectLines.begin();
-            for (j = intersectPoints.begin()+1; j != intersectPoints.end(); ++j)
-            {
-                shapeLineIter++;
-                Line checkLine(fractureLine.point1, *j);
-                if (checkLine.length() < fractureLine.length())
-                {
-                    fractureLine.point2 = *j;
-                    shapeLine = *shapeLineIter;
-                }
-            }
-        }
-        shapeSplit = true;
-    }
-*/
     addPoint(fractureLine.point2);
     //cout << "exiting increase()" << endl;
     parentShape->save("saves/After_Increase.txt");
@@ -279,6 +259,67 @@ void Crack::increase(double force)
     fractureLine.draw();
     JDL::setDrawColor(255,255,255);
     JDL::flush();
+}
+
+
+void Crack::increase(double force)
+{
+    double decreaseFactor = 0.9;
+
+    if (shapeSplit)
+    {
+        cerr << "Cannot increase crack that has already split the shape!"
+             << endl;
+        return;
+    }
+
+    if (isPoint())
+    {
+        increaseOne(force);
+        return;
+    }
+
+    vector<Crack*> children;
+    vector<Crack*>::iterator c;
+    getChildren(&children);
+    if (children.size())
+    {
+        //ok. If the crack has children, then we call increase on its children
+        for (c = children.begin(); c != children.end(); ++c)
+        {
+            (*c)->increase(force * decreaseFactor);
+        }
+    }
+    else
+    {
+        //the crack has no children.
+        //first, we make some.
+        //then, we call increase on those
+        Crack *crack1 = new Crack(parentShape, lines.back()->point2, 
+                                  lines.back());
+        crack1->parentCrack = this;
+        Crack *crack2 = new Crack(parentShape, lines.back()->point2,
+                                  lines.back());
+        crack2->parentCrack = this;
+
+        lines.back()->cracks.push_back(crack1);
+        lines.back()->cracks.back()->increase(force * decreaseFactor);
+        lines.back()->cracks.push_back(crack2);
+        lines.back()->cracks.back()->increase(force * decreaseFactor);
+    }
+}
+
+void Crack::getChildren(vector<Crack*> *children)
+{
+    vector<Line*>::iterator l;
+    vector<Crack*>::iterator c;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        for (c = (*l)->cracks.begin(); c != (*l)->cracks.end(); ++c)
+        {
+            children->push_back(*c);
+        }
+    }
 }
 
 void Crack::move(double distance, double degrees)
@@ -305,18 +346,30 @@ Point Crack::startPoint()
     return lines[0]->point1;
 }
 
+bool Crack::isPoint()
+{
+    if (!lines.size()) return true;
+    if (lines[0]->point1 == lines[0]->point2)
+    {
+        if (lines.size() != 1)
+        {
+            cerr << "The first line in the crack is a point!" << endl;
+        }
+        return true;
+    }
+    return false;
+}
+
 void Crack::addPoint(Point toAdd)
 {
     //cout << "size: " << lines.size() << endl;
     if (!lines.size())
     {
-        point = true;
         lines.push_back(new Line(toAdd, toAdd));
     }
-    else if (point)
+    else if (isPoint())
     {
         lines[0]->point2 = toAdd;
-        point = false;
     }
     else
     {
@@ -331,8 +384,33 @@ void Crack::clearLines()
     lines.clear();
 }
 
+//starting from this crack, go up the chain an grab all the lines
+void Crack::convertToLinesDelete(vector<Line*> *resultVec, Crack *toDelete)
+{
+    //first step: throw all lines of this crack into the vector.
+    //TODO: efficiency. I know pushing front to a vector is bad.
+
+    vector<Line*>::reverse_iterator rl;
+    for (rl = lines.rbegin(); rl != lines.rend(); ++rl)
+    {
+        cout << *rl;
+        (*rl)->deleteCrack(toDelete);
+        resultVec->insert(resultVec->begin(), *rl);
+    }
+
+    //second step: go up one level.
+    //push all lines of parent, except not this crack.
+    if (parentCrack)
+    {
+        parentCrack->convertToLinesDelete(resultVec, this);
+    }
+}
+
 void Crack::getSplitLines(vector<Line*> *splitLines)
 {
+#ifdef IM_TIRED
+    //TODO: We're going to ignore crack-crack intersections for now
+    
     vector<Line*>::iterator l;
     
     //first, get the split lines from the intersectCrack
@@ -373,12 +451,15 @@ void Crack::getSplitLines(vector<Line*> *splitLines)
     JDL::setDrawColor(255,255,255);
     JDL::sleep(5);
 */
-   
+    if (!temp) cout << "Welp..." << endl;
+    temp->convertToLinesDelete(splitLines, NULL);
+    cout << "HERE" << endl;
+/*   
     for (l = lines.begin(); l != lines.end(); ++l)
     {
         splitLines->push_back(*l);
     }
-
+*/
    
     
     //merge and resolve the two lines of cracks.
@@ -419,12 +500,13 @@ void Crack::getSplitLines(vector<Line*> *splitLines)
         //JDL::sleep(5);
 
     }
-
+#endif
 }
 
 bool Crack::isShapeSplit()
 {
-    return shapeSplit;
+    return false;
+    //return shapeSplit;
 }
 
 bool Crack::shouldDelete()
@@ -445,6 +527,31 @@ Line *Crack::getStartLine()
 Line *Crack::getFirstLine()
 {
     return lines[0];
+}
+
+bool Crack::lineIntersectsIgnore(const Line &toCheck, Point toIgnore)
+{
+    vector<Line*>::iterator l;
+    vector<Crack*>::iterator c;
+    Point intersect;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        if ((*l)->intersects(toCheck, &intersect))
+        {
+            if (intersect != toIgnore)
+            {
+                return true;
+            }
+        }
+        for (c = (*l)->cracks.begin(); c != (*l)->cracks.end(); ++c)
+        {
+            if ((*c)->lineIntersectsIgnore(toCheck, toIgnore))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 bool Crack::lineIntersects(const Line &toCheck, Point *intersect)
@@ -498,7 +605,6 @@ string Crack::generateJSON()
     streamy <<"\"intersectCrack\":" << ((intersectCrack) ? "true" : "false");
     streamy << ",\"parentShape\":" << ((parentShape) ? "true" : "false"); //debug only
     streamy << ",\"doDelete\":" << ((doDelete) ? "true" : "false");
-    streamy << ",\"point\":" << ((point) ? "true" : "false");
     streamy << ",\"shapeSplit\":" << ((shapeSplit) ? "true" : "false");
     streamy << ",\"lines\":";
 
@@ -517,4 +623,26 @@ string Crack::generateJSON()
     toReturn += "]";
     toReturn += "}";
     return toReturn;
+}
+
+Crack* Crack::getTopParentCrack()
+{
+    if (!parentCrack)
+    {
+        return this;
+    }
+    else
+    {
+        return parentCrack->getTopParentCrack();
+    }
+/*
+    if (parentShape->containsLine(startLine))
+    {
+        return this;
+    }
+    else
+    {
+        return startLine->getParentCrack();
+    }
+*/
 }

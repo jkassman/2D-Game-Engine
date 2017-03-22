@@ -17,15 +17,18 @@ class Crack
 private:
     std::vector<Line*> lines;
     Crack *intersectCrack;
+    Crack *parentCrack;
     bool doDelete;
+    Crack *temp;
 
     Line *startLine;
     Shape *parentShape;
-    bool point;
     bool shapeSplit;
 
     void addPoint(Point toAdd);
     void init(Shape *parentShape, Point startPoint, Line *startLine);
+    void increaseOne(double force);
+    void getChildren(std::vector<Crack*> *children);
     
 public:
     Crack(Shape *parentShape, Point startPoint, Line *startLine);
@@ -36,19 +39,23 @@ public:
     //force is a measure of how much the crack should increase in length
     void increase(double force);
     Point startPoint();
+    bool isPoint();
     Line *getStartLine();
     Line *getFirstLine();
 
     bool isShapeSplit();
     bool shouldDelete();
+    void convertToLinesDelete(std::vector<Line*> *resultVec, Crack *toDelete);
     void getSplitLines(std::vector<Line*> *splits);
     void clearLines();                          
     void setParent(Shape *parentShape);
+    Crack *getTopParentCrack();
 
     void move(double distance, double degrees);
     void draw() const;
 
     bool lineIntersects(const Line &toCheck, Point *intersect);
+    bool lineIntersectsIgnore(const Line &toCheck, Point toIgnore);
 
     bool sanityCheck(Shape *parentShape, Line *startLine); //NOTE: sanityCheck MODIFIES to make sane!
 

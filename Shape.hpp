@@ -59,6 +59,7 @@ public:
                         std::vector<Line*> *result);
 */
     bool lineOnBorder(const Line &toCheck) const;
+    bool containsLine(Line *toCheck) const;
     int lineIntersectsCrack(const Line &toCheck, 
                              std::vector<Crack*> *intersectCracks,
                             std::vector<Point> *intersectPoints,
