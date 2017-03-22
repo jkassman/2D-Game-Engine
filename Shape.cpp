@@ -112,6 +112,11 @@ int Shape::fractureAt(Point clickPoint)
             cout << "Creating New Crack" << endl;
             impactedCracks.push_back(newCrack);
         }
+        else
+        {
+            //The affected shape was not near the click
+            //TODO: Check for problems here
+        }
     }
     
     //now update the cracks that we have gathered.
@@ -639,7 +644,7 @@ string Shape::generateJSON()
 
 void Shape::save(string fileName)
 {
-    ofstream outFile(fileName);
+    ofstream outFile(fileName.c_str());
     outFile << generateJSON();
     outFile.close();
 }
@@ -654,7 +659,7 @@ void loadLines(string fileName, vector<Line*> *toFill)
     string jsonString;
 
     //load the file into the string
-    ifstream inFile(fileName);
+    ifstream inFile(fileName.c_str());
     getline(inFile, jsonString);
    
     //get all the json objects into a vector
@@ -692,16 +697,16 @@ int Shape::saveNum = 0;
 //expects every item in the list to be surrounded by {}
 void parseJsonList(string *jsonString, vector<string> *toFill)
 {
-    if (jsonString->front() != '[')
+    if (jsonString->at(0) != '[')
     {
         cerr << "Invalid JSON passed to parseJsonList" << endl;
         return;
     }
     jsonString->erase(0, 1); //erase the [
 
-    while (jsonString->front() != ']')
+    while (jsonString->at(0) != ']')
     {
-        if (jsonString->front() == ',')
+        if (jsonString->at(0) == ',')
         {
             jsonString->erase(0, 1);
         }
@@ -714,7 +719,7 @@ void parseJsonList(string *jsonString, vector<string> *toFill)
 //object must be surrounded by {} or []
 string grabJsonObject(string *jsonString)
 {
-    if ((jsonString->front() != '{') && (jsonString->front() != '['))
+    if ((jsonString->at(0) != '{') && (jsonString->at(0) != '['))
     {
         cerr << "Invalid JSON passed to grabJsonObject!" << endl;
         return *jsonString;
@@ -723,12 +728,12 @@ string grabJsonObject(string *jsonString)
     string toReturn;
     do 
     {
-        toReturn.push_back(jsonString->front());
-        if ((jsonString->front() == '}') || (jsonString->front() == ']'))
+        toReturn.push_back(jsonString->at(0));
+        if ((jsonString->at(0) == '}') || (jsonString->at(0) == ']'))
         {
             levelsDown--;
         }
-        else if ((jsonString->front() == '{') || (jsonString->front() == '['))
+        else if ((jsonString->at(0) == '{') || (jsonString->at(0) == '['))
         {
             levelsDown++;
         }
@@ -742,7 +747,7 @@ string grabJsonObject(string *jsonString)
 string grabJsonValue(string jsonString, string value)
 {
     //scan to find a match
-    int i, valueIndex;
+    unsigned int i, valueIndex;
     valueIndex = 0;
     for (i = 0; i < jsonString.length(); i++)
     {

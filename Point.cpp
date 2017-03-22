@@ -32,8 +32,13 @@ Point::Point(string jsonString)
     xString = grabJsonValue(jsonString, "x");
     yString = grabJsonValue(jsonString, "y");
 
+#ifdef JDL_USE_STL
     this->x = stod(xString);
     this->y = stod(yString);
+#else
+    this->x = atof(xString.c_str());
+    this->y = atof(yString.c_str());
+#endif
 }
 
 void Point::print() const

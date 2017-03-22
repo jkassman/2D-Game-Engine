@@ -396,6 +396,7 @@ bool Line::operator==(const Line &other) const
 }
 
 //not equivalence; if one line sort of "fits on top of" another
+//TODO: Define this better
 bool Line::coincident(const Line &other) const
 {
     return (on(other.point1) && on(other.point2));
