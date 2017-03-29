@@ -17,20 +17,26 @@ class Crack
 private:
     std::vector<Line*> lines;
     Crack *intersectCrack;
-    Crack *parentCrack;
     bool doDelete;
     Crack *temp;
 
+    Crack *parentCrack;
     Line *startLine;
-    Shape *parentShape;
     bool shapeSplit;
 
     void addPoint(Point toAdd);
     void init(Shape *parentShape, Point startPoint, Line *startLine);
-    void increaseOne(double force);
-    void getChildren(std::vector<Crack*> *children);
     
 public:
+    Shape *parentShape; //TODO: make this private again
+
+    void increaseOne(double force);
+    void getChildren(std::vector<Crack*> *children);
+    void getGrandestChildren(std::vector<Crack*> *grandChildren);
+    void increaseOld(double force);
+
+    Crack* addChild(); //adds a crack that is a point
+
     Crack(Shape *parentShape, Point startPoint, Line *startLine);
     Crack(Shape *parentShape, const std::vector<Line*> &newLines, Line *start);
     Crack(std::string jsonString, Line *startLine);

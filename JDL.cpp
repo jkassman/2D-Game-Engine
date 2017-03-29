@@ -472,6 +472,11 @@ void JDL::clicked(int &x, int &y, int &click)
 }
 
 
+void JDL::getMouseLocation(int &x, int &y)
+{
+    SDL_GetMouseState(&x, &y);
+}
+
 void JDL::flush()
 {
 	SDL_RenderPresent(gRenderer);
@@ -966,6 +971,12 @@ char JDL::wait(int *x, int *y)
     return toReturn;
 }
 
+void JDL::getMouseLocation(int &x, int &y)
+{
+    x = gfx_xpos();
+    y = gfx_ypos();
+}
+
 int JDL::event_waiting()
 {
     return gfx_event_waiting();
@@ -981,7 +992,7 @@ void JDL::circle(int x, int y, int r)
     gfx_circle(x, y, r);
 }
 
-//incompatible, doesn't return width;
+//TODO: incompatible, doesn't return width;
 int JDL::text(int x, int y, const char *text)
 {
     gfx_text(x, y, text);

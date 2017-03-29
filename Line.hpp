@@ -53,6 +53,8 @@ public:
     bool coincident(const Line &other) const;
     //Line operator=(const Line &other);
 
+    bool moveAwayFromEdges(double distance, Point *toMove) const;
+
     void split(Point splitPoint, Line *newLine);
 
     //void createFracture(Point startPoint, Shape *parentShape, double force);

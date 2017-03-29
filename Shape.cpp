@@ -6,136 +6,181 @@
 #include <iostream>
 #include <algorithm>
 #include <math.h>
-#include <fstream>
-//#include <sstream>
+ #include <fstream>
+ //#include <sstream>
 
-using namespace std;
-Shape::Shape(vector<Point> givenPoints, vector<Shape*> *toDraw)
-{
-    this->speed = 0;
-    this->direction = 0;
-    this->toDraw = toDraw;
-    vector<Point>::iterator i;
-    vector<Point>::iterator next;
-    for (i = givenPoints.begin(); i != givenPoints.end(); ++i)
-    {
-        if ((i + 1) == givenPoints.end())
-        {
-            next = givenPoints.begin();
-        }
-        else
-        {
-            next = i + 1;
-        }
-        addPoint(*next);
-    }
-}
+ using namespace std;
+ Shape::Shape(vector<Point> givenPoints, vector<Shape*> *toDraw)
+ {
+     this->speed = 0;
+     this->direction = 0;
+     this->toDraw = toDraw;
+     vector<Point>::iterator i;
+     vector<Point>::iterator next;
+     for (i = givenPoints.begin(); i != givenPoints.end(); ++i)
+     {
+         if ((i + 1) == givenPoints.end())
+         {
+             next = givenPoints.begin();
+         }
+         else
+         {
+             next = i + 1;
+         }
+         addPoint(*next);
+     }
+ }
 
-Shape::Shape(vector<Line*> &givenLines, vector<Shape*> *toDraw)
-{
-    this->speed = 0;
-    this->direction = 0;
-    this->toDraw = toDraw;
-    this->lines = givenLines;
-}
+ Shape::Shape(vector<Line*> &givenLines, vector<Shape*> *toDraw)
+ {
+     this->speed = 0;
+     this->direction = 0;
+     this->toDraw = toDraw;
+     this->lines = givenLines;
+ }
 
-void Shape::move(double distance, double degrees)
-{
-    vector<Line*>::iterator i;
-    for (i = lines.begin(); i != lines.end(); ++i)
-    {
-        (*i)->move(distance, degrees);
-    }
-}
+ void Shape::move(double distance, double degrees)
+ {
+     vector<Line*>::iterator i;
+     for (i = lines.begin(); i != lines.end(); ++i)
+     {
+         (*i)->move(distance, degrees);
+     }
+ }
 
-void Shape::move()
-{
-    vector<Line*>::iterator i;
-    for (i = lines.begin(); i != lines.end(); ++i)
-    {
-        (*i)->move(speed, direction);
-    }
-}
+ void Shape::move()
+ {
+     vector<Line*>::iterator i;
+     for (i = lines.begin(); i != lines.end(); ++i)
+     {
+         (*i)->move(speed, direction);
+     }
+ }
 
-void Shape::setSpeed(double speed, double degrees)
-{
-    this->speed = speed;
-    this->direction = degrees;
-}
+ void Shape::setSpeed(double speed, double degrees)
+ {
+     this->speed = speed;
+     this->direction = degrees;
+ }
 
-void Shape::draw()
-{
-    vector<Line*>::iterator i;
-    for (i = lines.begin(); i != lines.end(); ++i)
-    {
-        (*i)->draw();
-    }
-}
+ void Shape::draw()
+ {
+     vector<Line*>::iterator i;
+     for (i = lines.begin(); i != lines.end(); ++i)
+     {
+         (*i)->draw();
+     }
+ }
 
-Crack *Shape::addCrack(Point impactPoint)
-{
-    vector<Line*>::iterator l;
-    Point result;
-    for (l = lines.begin(); l != lines.end(); ++l)
-    {
-        if ((*l)->on(impactPoint, 10, &result))
-        {
-            return (*l)->addCrack(result, this);
-        }
-    }
-    return NULL;
-}
+ Crack *Shape::addCrack(Point impactPoint)
+ {
+     vector<Line*>::iterator l;
+     Point result;
+     for (l = lines.begin(); l != lines.end(); ++l)
+     {
+         if ((*l)->on(impactPoint, 10, &result))
+         {
+             return (*l)->addCrack(result, this);
+         }
+     }
+     return NULL;
+ }
 
-//returns how many cracks were affected
-int Shape::fractureAt(Point clickPoint)
-{
-    save("saves/Before_Click.txt");
-    vector<Crack*> impactedCracks;
-    vector<Line*>::iterator i;
-    double force = 50;
-    int numCracks = 0;
-    for (i = lines.begin(); i != lines.end(); ++i)
-    {
-        Point result;
-        if ((*i)->on(clickPoint, 10, &result))
-        {
-            //JDL::circle(result.x, result.y, 8);            
-            numCracks += (*i)->getImpactedCracks(clickPoint, this,
-                                                 &impactedCracks);
-        }
-    }
-    if (numCracks == 0)
-    {
-        Crack *newCrack = addCrack(clickPoint);
-        if (newCrack)
-        {
-            cout << "Creating New Crack" << endl;
-            impactedCracks.push_back(newCrack);
-        }
-        else
-        {
-            //The affected shape was not near the click
-            //TODO: Check for problems here
-        }
-    }
-    
-    //now update the cracks that we have gathered.
-    vector<Crack*>::iterator c;
-    vector<Line*> splitLines;
-    //cout << impactedCracks.size() << endl;
-    for (c = impactedCracks.begin(); c != impactedCracks.end(); ++c)
-    {
-        //eventually, modify force here based on size of impactedCracks
-        (*c)->increase(force);
-        if ((*c)->isShapeSplit())
-        {
-            (*c)->getSplitLines(&splitLines);
-            (*c)->clearLines(); //so the destructor doesn't erase the lines
-            (*c)->getStartLine()->deleteCrack(*c);
-            split(splitLines);
-        }
-    }
-    return impactedCracks.size();
+ //returns how many cracks were affected
+ int Shape::fractureAt(Point clickPoint)
+ {
+     vector<Crack*> children;
+     vector<Line*> splitLines;
+     //vector<int> forces;
+     //vector<Point> hitPoints;
+     Point impactPoint(0,0);
+
+     double force = 50;
+     double radius = 20;
+
+     Crack *toIncrease = NULL;
+
+     if (!pointOn(clickPoint, radius, &impactPoint))
+     {
+         return 0;
+     }
+     toIncrease = getAffectedCrack(impactPoint, radius);
+
+     if (!toIncrease) cerr << "PROBLEMS" << endl;
+
+     toIncrease->getGrandestChildren(&children);
+     splitChildren(&children);     
+     vector<Crack*>::iterator c;
+     for (c = children.begin(); c != children.end(); ++c)
+     {
+         //(*c)->increaseOne(force/children.size());
+         (*c)->increaseOne(force);
+     }
+
+     for (c = children.begin(); c != children.end(); ++c)
+     {
+         if ((*c)->isShapeSplit())
+         {
+             splitLines.clear();
+             (*c)->getSplitLines(&splitLines);
+             (*c)->clearLines(); //so the destructor doesn't erase the lines
+             (*c)->getStartLine()->deleteCrack(*c);
+             (*c)->parentShape->split(splitLines);
+         }
+     }
+
+     return children.size();
+
+ #ifdef THREE_TWENTYEIGHT_OLD_CODE
+     save("saves/Before_Click.txt");
+     vector<Crack*> impactedCracks;
+     vector<Line*>::iterator i;
+     double force = 50;
+     int numCracks = 0;
+     for (i = lines.begin(); i != lines.end(); ++i)
+     {
+         Point result;
+         if ((*i)->on(clickPoint, 10, &result))
+         {
+             //JDL::circle(result.x, result.y, 8);            
+             numCracks += (*i)->getImpactedCracks(clickPoint, this,
+                                                  &impactedCracks);
+         }
+     }
+     if (numCracks == 0)
+     {
+         Crack *newCrack = addCrack(clickPoint);
+         if (newCrack)
+         {
+             cout << "Creating New Crack" << endl;
+             impactedCracks.push_back(newCrack);
+         }
+         else
+         {
+             //The affected shape was not near the click
+             //TODO: Check for problems here
+         }
+     }
+
+     //now update the cracks that we have gathered.
+     vector<Crack*>::iterator c;
+     vector<Line*> splitLines;
+     //cout << impactedCracks.size() << endl;
+     for (c = impactedCracks.begin(); c != impactedCracks.end(); ++c)
+     {
+         //eventually, modify force here based on size of impactedCracks
+         (*c)->increase(force);
+         if ((*c)->isShapeSplit())
+         {
+             (*c)->getSplitLines(&splitLines);
+             (*c)->clearLines(); //so the destructor doesn't erase the lines
+             (*c)->getStartLine()->deleteCrack(*c);
+             split(splitLines);
+         }
+     }
+     return impactedCracks.size();
+
+#endif
 }
 
 void Shape::addPoint(Point toAdd)
@@ -152,6 +197,135 @@ void Shape::addPoint(Point toAdd)
     //lines.back()->index = lines.size()-1;
 }
 
+//Return the line that:
+//has the nearest crack within radius
+//or, if no line has a crack within radius, the first line found.
+Crack * Shape::getAffectedCrack(Point impactPoint, double radius)
+{
+    //step 1: find the line that impactPoint is on.
+    vector<Line*>::const_iterator l, lon = lines.end();
+    if (!lines.size())
+    {
+        cerr << "WTF...Problems!" << endl;
+        return NULL;
+    }
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        if ((*l)->on(impactPoint))
+        {
+            lon = l;
+            break;
+        }
+    }
+    if (lon == lines.end())
+    {
+        impactPoint.drawCircle(3);
+        JDL::flush();
+        JDL::sleep(5);
+        cerr << "ERROR: The impactPoint was not on the shape" << endl;
+        return NULL;
+    }
+    //step 2: find the crack on lon with the closest start point to impactPoint
+    Line distance;
+    distance.point1 = impactPoint;
+    double minDist = radius;
+    vector<Crack*>::const_iterator c;
+    Crack *toReturn = NULL;
+    for (c = (*lon)->cracks.begin(); c!= (*lon)->cracks.end(); ++c)
+    {
+        distance.point2 = (*c)->startPoint();
+        if (distance.length() < minDist)
+        {
+            minDist = distance.length();
+            toReturn = *c;
+        }
+    }
+
+    //step 3: search backwards through the lines to find a crack.
+    double backwardsDist = Line(impactPoint, (*lon)->point1).length();
+    l = lon;
+    while (backwardsDist < radius)
+    {
+        if (l == lines.begin())
+        {
+            l = lines.end();
+        }
+        l--;
+
+        distance.point1 = (*l)->point2;
+        for (c = (*l)->cracks.begin(); c!= (*l)->cracks.end(); ++c)
+        {
+            distance.point2 = (*c)->startPoint();
+            if ((distance.length() + backwardsDist)< minDist)
+            {
+                minDist = distance.length() + backwardsDist; 
+                toReturn = *c;
+            }
+        }
+
+        backwardsDist += (*l)->length();
+    }
+
+    //Step 4: search forwards through the lines to find a crack.
+    double forwardsDist = Line(impactPoint, (*lon)->point2).length();
+    l = lon;
+    while (forwardsDist < radius)
+    {
+        l++;
+        if (l == lines.end())
+        {
+            l = lines.begin();
+        }
+
+        distance.point1 = (*l)->point1;
+        for (c = (*l)->cracks.begin(); c!= (*l)->cracks.end(); ++c)
+        {
+            distance.point2 = (*c)->startPoint();
+            if ((distance.length() + forwardsDist) < minDist)
+            {
+                minDist = distance.length() + forwardsDist; 
+                toReturn = *c;
+            }
+        }
+
+        forwardsDist += (*l)->length();
+    }
+    
+    if (!toReturn)
+    {
+        //create new crack on lon
+        toReturn = (*lon)->addCrack(impactPoint, this);
+    }
+    return toReturn;
+}
+
+//assume forces and hitPoints are empty.
+//fills both of them to correspond to lines.
+void Shape::distributeForce(Point impactPoint, double force, double radius,
+                            std::vector<int> *forces, 
+                            std::vector<Point> *hitPoints) const
+{
+    
+    /*
+      In this iteration, all we do is check if the impact point is near
+      the corner. If it is, split up the impact.
+      Eventually, look at force and size of the line and stuff
+      Ya, looking at that stuff is starting to drive me crazy.
+    */ 
+
+    //ok, so what do we want?
+    //loop through all the lines.
+    //When we find the one that it is on, do stuff.
+    //if corner, we have some problems...
+    //put half the force on this one
+    //make a new function to distribute force?
+    //or is that this function?
+
+    //that's this function!
+
+    //scan through 
+}
+
 bool Shape::containsLine(Line *toCheck) const
 {
     vector<Line*>::const_iterator l;
@@ -163,6 +337,43 @@ bool Shape::containsLine(Line *toCheck) const
         }
     }
     return false;
+}
+
+bool Shape::pointOn(Point toCheck, double radius, Point *resultPoint) const
+{
+    vector<Line*>::const_iterator l;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        if ((*l)->on(toCheck, radius, resultPoint))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+bool Shape::pointOn(Point toCheck) const
+{
+    Point dummyPoint;
+    return pointOn(toCheck, JDL::PRECISION, &dummyPoint);
+}
+
+bool Shape::lineIntersects(const Line &toCheck, Point *intersectPoint) const
+{
+    vector<Line*>::const_iterator l;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        if ((*l)->intersects(toCheck, intersectPoint))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Shape::lineIntersects(const Line &toCheck) const
+{
+    Point dummyPoint;
+    return lineIntersects(toCheck, &dummyPoint);
 }
 
 bool Shape::lineOnBorder(const Line &toCheck) const
@@ -234,7 +445,7 @@ void Shape::split(vector<Line*> &splitLines)
     {
         cerr << "PROBLEMS!!!!" << endl;
     }
-#define ND_RESEARCH_DEBUG
+//#define ND_RESEARCH_DEBUG
 #ifdef ND_RESEARCH_DEBUG
     crackStartPoint.drawCircle(3);
     crackEndPoint.drawCircle(3);
@@ -260,10 +471,26 @@ void Shape::split(vector<Line*> &splitLines)
     //copy splitLines
     vector<Line*> splitLinesCopy1;
     vector<Line*> splitLinesCopy2;
+#if false
     for (l = splitLines.begin(); l != splitLines.end(); ++l)
     {
         splitLinesCopy1.push_back(new Line(**l));
         splitLinesCopy2.push_back(new Line(**l));
+    }
+#endif
+    //but only copy the lines properly. Copy the cracks as pointers.
+    for (l = splitLines.begin(); l != splitLines.end(); ++l)
+    {
+        splitLinesCopy1.push_back(new Line((*l)->point1, (*l)->point2));
+        for (c = (*l)->cracks.begin(); c != (*l)->cracks.end(); ++c)
+        {
+            splitLinesCopy1.back()->cracks.push_back(*c);
+        }
+        splitLinesCopy2.push_back(new Line((*l)->point1, (*l)->point2));
+        for (c = (*l)->cracks.begin(); c != (*l)->cracks.end(); ++c)
+        {
+            splitLinesCopy2.back()->cracks.push_back(*c);
+        }
     }
     
     appendLines(&lines1, splitLinesCopy1);
@@ -469,6 +696,7 @@ void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
             JDL::flush();
         }
 
+     
         JDL::circle(firstPoint2.x, firstPoint2.y, 5);
         JDL::circle(lastPoint2.x, lastPoint2.y, 5);
 
@@ -616,7 +844,8 @@ void Shape::removeCracksOutside()
         c = (*l)->cracks.begin();
         while (c != (*l)->cracks.end())
         {
-            if (!inside((*c)->getFirstLine()->point2))
+            //if (!inside((*c)->getFirstLine()->point2))
+            if ((rayTrace(*(*c)->getFirstLine()) % 2) == 0) //if even, erase
             {
                 c = (*l)->cracks.erase(c);
             }
@@ -819,4 +1048,22 @@ string grabJsonValue(string jsonString, string value)
         i++;
     }
     return toReturn;
+}
+
+//if children is one (and a point), do nothing.
+//Otherwise, for each child, either create two new points for it or do nothing.
+void splitChildren(std::vector<Crack*> *children)
+{
+    vector<Crack*> childCopy;
+    childCopy.assign(children->begin(), children->end());
+    if ((*children)[0]->isPoint()) return;
+    
+    children->clear();
+    vector<Crack*>::iterator c;
+    
+    for (c = childCopy.begin(); c != childCopy.end(); ++c)
+    {
+        children->push_back((*c)->addChild());
+        children->push_back((*c)->addChild());
+    }
 }

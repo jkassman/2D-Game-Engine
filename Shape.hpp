@@ -46,20 +46,22 @@ public:
     void addPoint(Point toAdd);
     Crack *addCrack(Point impactPoint);
     int fractureAt(Point clickPoint);
+    void distributeForce(Point impactPoint, double force, double radius,
+                         std::vector<int> *forces,
+                         std::vector<Point> *hitPoints) const;
+    Crack * getAffectedCrack(Point impactPoint, double radius);
     void split (std::vector<Line*> &splitLines);
     void updateCrackParents();
 
     void grabShapeLines(Point startPoint, Point endPoint,
                         std::vector<Line*> *result);
-/*
-    void grabShapeLines(int startIndex, int endIndex,
-                        std::vector<Line*> *result);
-    void grabShapeLines(std::vector<Line*>::iterator startIndex, 
-                        std::vector<Line*>::iterator endIndex, 
-                        std::vector<Line*> *result);
-*/
+
     bool lineOnBorder(const Line &toCheck) const;
     bool containsLine(Line *toCheck) const;
+    bool pointOn(Point toCheck, double radius, Point *resultPoint) const;
+    bool pointOn(Point toCheck) const;
+    bool lineIntersects(const Line &toCheck, Point *intersectPoint) const;
+    bool lineIntersects(const Line &toCheck) const;
     int lineIntersectsCrack(const Line &toCheck, 
                              std::vector<Crack*> *intersectCracks,
                             std::vector<Point> *intersectPoints,
@@ -71,6 +73,7 @@ public:
 
 };
 
+void splitChildren(std::vector<Crack*> *children);
 void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2);
 void loadLines(std::string fileName, std::vector<Line*> *toFill);
 void parseJsonList(std::string *jsonString, std::vector<std::string> *toFill);

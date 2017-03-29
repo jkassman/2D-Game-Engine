@@ -50,6 +50,7 @@ public:
 
 	//this eats all events. Consider changing when hotkeys are added
 	static void clicked(int &x, int &y, int &click); //click is -1 for quit, 0 for none, 1 for left, 2 for right
+        static void getMouseLocation(int &x, int &y);
 	static void clear();
 	static void flush();
 	static void getInt(int &toChange, int x, int y);
