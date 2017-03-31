@@ -810,6 +810,7 @@ int Shape::lineIntersectsCrack(const Line &toCheck,
 {
     vector<Line*>::const_iterator l;
     vector<Crack*>::const_iterator c;
+    Crack *intersectCrack = NULL;
     int numIntersects = 0;
     Point *intersect = new Point();
     for (l = lines.begin(); l != lines.end(); ++l)
@@ -820,9 +821,9 @@ int Shape::lineIntersectsCrack(const Line &toCheck,
             {
                 continue;
             }
-            if ((*c)->lineIntersects(toCheck, intersect))
+            if ((*c)->lineIntersects(toCheck, intersect, &intersectCrack))
             {
-                intersectCracks->push_back(*c);
+                intersectCracks->push_back(intersectCrack);
                 intersectPoints->push_back(*intersect);
 
                 numIntersects++;
@@ -1054,16 +1055,26 @@ string grabJsonValue(string jsonString, string value)
 //Otherwise, for each child, either create two new points for it or do nothing.
 void splitChildren(std::vector<Crack*> *children)
 {
+    if ((*children)[0]->isPoint()) return;
+
     vector<Crack*> childCopy;
     childCopy.assign(children->begin(), children->end());
-    if ((*children)[0]->isPoint()) return;
     
     children->clear();
     vector<Crack*>::iterator c;
-    
+    double percentChance = 33.33;
+
     for (c = childCopy.begin(); c != childCopy.end(); ++c)
     {
-        children->push_back((*c)->addChild());
-        children->push_back((*c)->addChild());
+        if (JDL::randDouble(0, 100) < percentChance)
+        {
+            children->push_back((*c)->addChild());
+            children->push_back((*c)->addChild());
+        }
+        else
+        {
+            //do nothing
+            children->push_back(*c);
+        }
     }
 }

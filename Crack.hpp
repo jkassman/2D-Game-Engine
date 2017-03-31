@@ -18,7 +18,7 @@ private:
     std::vector<Line*> lines;
     Crack *intersectCrack;
     bool doDelete;
-    Crack *temp;
+    //Crack *temp;
 
     Crack *parentCrack;
     Line *startLine;
@@ -52,6 +52,7 @@ public:
     bool isShapeSplit();
     bool shouldDelete();
     void convertToLinesDelete(std::vector<Line*> *resultVec, Crack *toDelete);
+    Crack *splitOffAt(Point splitPoint);
     void getSplitLines(std::vector<Line*> *splits);
     void clearLines();                          
     void setParent(Shape *parentShape);
@@ -60,7 +61,8 @@ public:
     void move(double distance, double degrees);
     void draw() const;
 
-    bool lineIntersects(const Line &toCheck, Point *intersect);
+    bool lineIntersects(const Line &toCheck, Point *intersect, 
+                        Crack **intersectCrack);
     bool lineIntersectsIgnore(const Line &toCheck, Point toIgnore);
 
     bool sanityCheck(Shape *parentShape, Line *startLine); //NOTE: sanityCheck MODIFIES to make sane!
