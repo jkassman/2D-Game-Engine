@@ -12,6 +12,7 @@
  using namespace std;
  Shape::Shape(vector<Point> givenPoints, vector<Shape*> *toDraw)
  {
+     this->projectile = false;
      this->speed = 0;
      this->direction = 0;
      this->toDraw = toDraw;
@@ -35,9 +36,18 @@
  {
      this->speed = 0;
      this->direction = 0;
+     this->projectile = false;
      this->toDraw = toDraw;
      this->lines = givenLines;
  }
+
+Shape::Shape(vector<Shape*> *toDraw)
+{
+    this->projectile = false;
+    this->speed = 0;
+    this->direction = 0;
+    this->toDraw = toDraw; 
+}
 
  void Shape::move(double distance, double degrees)
  {
@@ -72,6 +82,32 @@
      }
  }
 
+void Shape::collide()
+{
+    if (!projectile) return;
+    vector<Shape*>::iterator s;
+    vector<Line*>::iterator l;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        //for all other shapes
+        for (s = toDraw->begin(); s != toDraw->end(); ++s)
+        {
+            if (*s == this) continue;
+            if (projectile && (*s)->inside((*l)->point1))
+            {
+                Point crashPoint = (*l)->point1;
+                direction += 180;
+                crashPoint.drawCircle(3);
+                //fractureAt(crashPoint);
+                projectile = false;
+                //(*s)->direction = (*s)->direction;
+                (*s)->fractureAt(crashPoint);
+                return;
+            }
+        }
+    }
+}
+
  Crack *Shape::addCrack(Point impactPoint)
  {
      vector<Line*>::iterator l;
@@ -96,7 +132,7 @@
      Point impactPoint(0,0);
 
      double force = 50;
-     double radius = 20;
+     double radius = 10;
 
      Crack *toIncrease = NULL;
 
@@ -197,6 +233,32 @@ void Shape::addPoint(Point toAdd)
     //lines.back()->index = lines.size()-1;
 }
 
+Line *Shape::getLineNearest(Point clickPoint) const
+{
+    vector<Line*>::const_iterator l;
+ 
+    double radius = 1000000;
+   
+    Line *toReturn = NULL;
+
+    double minDist = Line(clickPoint, lines.front()->point1).length();
+    toReturn = lines.front();
+    Point resultPoint;
+    
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        (*l)->on(clickPoint, radius, &resultPoint);
+        Line dist(clickPoint, resultPoint);
+        if (dist.length() < minDist)
+        {
+            minDist = dist.length();
+            toReturn = *l;
+        }
+    }
+    
+    return toReturn;
+}
+
 //Return the line that:
 //has the nearest crack within radius
 //or, if no line has a crack within radius, the first line found.
@@ -209,9 +271,10 @@ Crack * Shape::getAffectedCrack(Point impactPoint, double radius)
         cerr << "WTF...Problems!" << endl;
         return NULL;
     }
+    Line *lineOn = getLineNearest(impactPoint);
     for (l = lines.begin(); l != lines.end(); ++l)
     {
-        if ((*l)->on(impactPoint))
+        if (*l == lineOn)
         {
             lon = l;
             break;
@@ -370,10 +433,172 @@ bool Shape::lineIntersects(const Line &toCheck, Point *intersectPoint) const
     return false;
 }
 
+//ignore intersects on point1!
+bool Shape::lineIntersectsBorderNearest(const Line &toCheck, 
+                                  Point *intersectPoint) const
+{
+    vector<Line*>::const_iterator l;
+    vector<Point> intersectPoints;
+    int numIntersects = 0;
+
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        if ((*l)->intersects(toCheck, intersectPoint))
+        {
+            if (*intersectPoint == toCheck.point1)
+            {
+                continue;
+            }
+            numIntersects++;
+            intersectPoints.push_back(*intersectPoint);
+        }
+    }
+
+    vector<Point>::const_iterator p;
+    if (intersectPoints.size() == 0) return false;
+
+    double minDist = Line(toCheck.point1, *intersectPoints.begin()).length();
+    *intersectPoint = *intersectPoints.begin();
+    for (p = intersectPoints.begin()+1; p != intersectPoints.end(); ++p)
+    {
+        Line dist(toCheck.point1, *p);
+        if (dist.length() < minDist)
+        {
+            minDist = dist.length();
+            *intersectPoint = *p;
+        }
+    }
+    return true;    
+}
+
+//ignore intersects on point1!
+bool Shape::lineIntersectsCrackNearest(const Line &toCheck, 
+                                       Point *intersectPoint,
+                                       Crack **intersectCrack,
+                                       Crack *toIgnore) const
+{
+    vector<Crack*> intersectCracks;
+    vector<Point> intersectPoints;
+    lineIntersectsCrack(toCheck, &intersectCracks, &intersectPoints,
+                        toIgnore);
+
+    //remove any point1 intersects:
+    vector<Point>::iterator p;
+    vector<Crack*>::iterator c = intersectCracks.begin();
+    for (p = intersectPoints.begin(); p != intersectPoints.end();)
+    {
+        if (*p == toCheck.point1)
+        {
+            p = intersectPoints.erase(p);
+            c = intersectCracks.erase(c);
+        }
+        else
+        {
+            ++c;
+            ++p;
+        }
+    }
+
+    if (intersectPoints.size() == 0) return false;
+
+    
+    double minDist = Line(toCheck.point1, *intersectPoints.begin()).length();
+    *intersectPoint = *intersectPoints.begin();
+    *intersectCrack = *intersectCracks.begin();
+    c = intersectCracks.begin();
+    for (p = intersectPoints.begin(); p != intersectPoints.end(); ++p)
+    {
+        c++;
+        Line dist(toCheck.point1, *p);
+        if (dist.length() < minDist)
+        {
+            minDist = dist.length();
+            *intersectPoint = *p;
+            *intersectCrack = *c;
+        }
+    }
+    
+    return true;
+}
+
+//returns the number of intersect points found
+//ignores crackToIgnore
+int Shape::lineIntersectsCrack(const Line &toCheck, 
+                               vector<Crack*> *intersectCracks, 
+                               vector<Point>  *intersectPoints,
+                               Crack *crackToIgnore) const
+{
+    vector<Line*>::const_iterator l;
+    vector<Crack*>::const_iterator c;
+    Crack *intersectCrack = NULL;
+    int numIntersects = 0;
+    Point *intersect = new Point();
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        for (c = (*l)->cracks.begin(); c != (*l)->cracks.end(); ++c)
+        {
+            if ((*c) == crackToIgnore)
+            {
+                continue;
+            }
+            if ((*c)->lineIntersects(toCheck, intersect, &intersectCrack))
+            {
+                intersectCracks->push_back(intersectCrack);
+                intersectPoints->push_back(*intersect);
+
+                numIntersects++;
+                intersect = new Point();
+            }
+        }
+    }
+    delete intersect;
+    return numIntersects;
+}
+
 bool Shape::lineIntersects(const Line &toCheck) const
 {
     Point dummyPoint;
     return lineIntersects(toCheck, &dummyPoint);
+}
+
+bool Shape::lineIntersectsBorderCrackNearest(const Line &toCheck,
+                                             Point *intersectPoint) const
+{
+    Point shapeIntersectPoint, crackIntersectPoint;
+    bool intersectsBorder, intersectsCrack;
+    Crack *dummy;
+    intersectsBorder=lineIntersectsBorderNearest(toCheck, &shapeIntersectPoint);
+    intersectsCrack = lineIntersectsCrackNearest(toCheck, &crackIntersectPoint, 
+                                                 &dummy, NULL);
+
+    bool toReturn = true;
+
+    if ((intersectsBorder) && (intersectsCrack))
+    {
+        Line borderDist(toCheck.point1, shapeIntersectPoint);
+        Line crackDist(toCheck.point1, shapeIntersectPoint);
+        if (borderDist.length() > crackDist.length())
+        {
+            *intersectPoint = shapeIntersectPoint;
+        }
+        else
+        {
+            *intersectPoint = crackIntersectPoint;
+        }
+    }
+    else if (intersectsBorder)
+    {
+        *intersectPoint = shapeIntersectPoint;
+    }
+    else if (intersectsCrack)
+    {
+        *intersectPoint = crackIntersectPoint;
+    }
+    else
+    {
+        toReturn = false;
+    }
+    return toReturn;
 }
 
 bool Shape::lineOnBorder(const Line &toCheck) const
@@ -799,40 +1024,6 @@ void Shape::debugDraw()
     }
 
     debugDraw();
-}
-
-//returns the number of intersect points found
-//ignores crackToIgnore
-int Shape::lineIntersectsCrack(const Line &toCheck, 
-                               vector<Crack*> *intersectCracks, 
-                               vector<Point>  *intersectPoints,
-                               Crack *crackToIgnore) const
-{
-    vector<Line*>::const_iterator l;
-    vector<Crack*>::const_iterator c;
-    Crack *intersectCrack = NULL;
-    int numIntersects = 0;
-    Point *intersect = new Point();
-    for (l = lines.begin(); l != lines.end(); ++l)
-    {
-        for (c = (*l)->cracks.begin(); c != (*l)->cracks.end(); ++c)
-        {
-            if ((*c) == crackToIgnore)
-            {
-                continue;
-            }
-            if ((*c)->lineIntersects(toCheck, intersect, &intersectCrack))
-            {
-                intersectCracks->push_back(intersectCrack);
-                intersectPoints->push_back(*intersect);
-
-                numIntersects++;
-                intersect = new Point();
-            }
-        }
-    }
-    delete intersect;
-    return numIntersects;
 }
 
 void Shape::removeCracksOutside()

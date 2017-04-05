@@ -973,8 +973,9 @@ char JDL::wait(int *x, int *y)
 
 void JDL::getMouseLocation(int &x, int &y)
 {
-    x = gfx_xpos();
-    y = gfx_ypos();
+    gfx_update_cursor();
+    x = gfx_xNow();
+    y = gfx_yNow();
 }
 
 int JDL::event_waiting()

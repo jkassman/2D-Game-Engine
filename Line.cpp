@@ -76,10 +76,8 @@ Line::Line(std::string jsonString)
 
 void Line::move(double distance, double degrees)
 {
-    point1.x += cos(degrees/180*M_PI)*distance;
-    point1.y += sin(degrees/180*M_PI)*distance;
-    point2.x += cos(degrees/180*M_PI)*distance;
-    point2.y += sin(degrees/180*M_PI)*distance;
+    point1.move(distance, degrees);
+    point2.move(distance, degrees);
     vector<Crack*>::iterator i;
     for (i = cracks.begin(); i != cracks.end(); ++i)
     {

@@ -1,3 +1,4 @@
+#include "Launcher.hpp"
 #include "Shape.hpp"
 #include "JDL.hpp"
 
@@ -20,12 +21,21 @@ int main(int argc, char **argv)
     points.push_back(Point(200, 100));
     toDraw.push_back(new Shape(points, &toDraw));
 
-    JDL::init(800, 800, "Research");
+    const int WIDTH = 800;
+    const int HEIGHT = 800;
+
+    JDL::init(WIDTH, HEIGHT, "Research");
     vector<Shape*>::iterator i;
     vector<Point> newPoints;
     char input;
     int x, y;
     int mode = 0;
+
+
+    Launcher launchy(&toDraw);
+    double launchMoveSpeed = 5;
+    double launchMoveDirection = 90;
+
     Shape *building = NULL;
     bool quit = false;
     //bool first = true;
@@ -72,6 +82,9 @@ int main(int argc, char **argv)
         case 'f':
             mode = 0;
             break;
+        case 'a':
+            launchy.fire();
+            break;
         case 'l':
             toDraw.clear(); //memory leaks yay
             loadLines("toLoad.txt", &newLines);
@@ -103,9 +116,21 @@ int main(int argc, char **argv)
 
     //draw and move shapes
         JDL::clear();
+        if (launchy.getPosition().y <= 100)
+        {
+            launchMoveDirection = 90;
+        }
+        if (launchy.getPosition().y >= (HEIGHT - 100))
+        {
+            launchMoveDirection = -90;
+        }
+        launchy.move(launchMoveSpeed, launchMoveDirection);
+
+
         for (i = toDraw.begin(); i != toDraw.end(); ++i)
         {
             (*i)->move();
+            (*i)->collide();
             (*i)->draw();
         }
         JDL::flush();

@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <math.h>
 
 using namespace std;
 
@@ -108,6 +109,12 @@ bool Point::near(const Point &other, double radius)
 {
     Line dist(*this, other);
     return (dist.length() < radius);
+}
+
+void Point::move(double distance, double degrees)
+{
+    x += cos(degrees/180*M_PI)*distance;
+    y += sin(degrees/180*M_PI)*distance;
 }
 
 void Point::drawCircle(int radius) const

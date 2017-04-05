@@ -23,6 +23,7 @@ public:
     bool operator<(const Point &other) const;
 
     bool near(const Point &other, double radius);
+    void move(double distance, double degrees);
 
     void drawCircle(int radius) const;
 

@@ -14,7 +14,7 @@ void Crack::init(Shape *parentShape, Point startPoint, Line *startLine)
 {
     this->shapeSplit = false;
     this->doDelete = false;
-    this->intersectCrack = NULL;
+    //this->intersectCrack = NULL;
     this->parentCrack = NULL;
     //this->temp = NULL;
     
@@ -48,7 +48,7 @@ Crack::Crack(string jsonString, Line *startLine)
     shapeSplitStr = grabJsonValue(jsonString, "shapeSplit");
     string linesString = grabJsonValue(jsonString, "lines");
 
-    this->intersectCrack = NULL;
+    //this->intersectCrack = NULL;
     if (intersectCrackStr != "false")
     {
         cerr << "intersectCrack was not Null. Cannot recreate!" << endl;
@@ -69,7 +69,7 @@ Crack::Crack(string jsonString, Line *startLine)
 
 Crack::Crack(const Crack &other)
 {   
-    this->intersectCrack = other.intersectCrack;
+    //this->intersectCrack = other.intersectCrack;
     this->parentCrack = other.parentCrack;
     this->doDelete = other.doDelete;
     this->startLine = other.startLine;
@@ -84,6 +84,7 @@ Crack::Crack(const Crack &other)
     }
 }
 
+#if 0
 void Crack::increaseOld(double force)
 {
     if (shapeSplit)
@@ -281,6 +282,7 @@ void Crack::increaseOld(double force)
     JDL::setDrawColor(255,255,255);
     JDL::flush();
 }
+#endif
 
 //This is the currently used Increase
 void Crack::increaseOne(double force)
@@ -294,7 +296,7 @@ void Crack::increaseOne(double force)
     //If it does, split the shape apart.
     //    (If it intersects with multiple, choose the closest edge)
 
-    int numIntersects = 0;
+    //int numIntersects = 0;
       
     vector<Point> intersectPoints;
     //vector<Line*> intersectLines;
@@ -401,39 +403,17 @@ void Crack::increaseOne(double force)
 
     //New Code:
     //first, check all the shape lines
-    Point shapeIntersectPoint, crackIntersectPoint;
-    Line *shapeIntersectLine = NULL;
-    Crack *intersectCrack = NULL;
-    parentShape->lineIntersectsBorderNearest(fractureLine, &shapeIntersectPoint, &shapeIntersectLine);
-    parentShape->lineIntersectsCrackNearest(fractureLine, &crackIntersectPoint, &intersectCrack);
+    Point intersectPoint;
+    bool intersect = parentShape->
+        lineIntersectsBorderCrackNearest(fractureLine, &intersectPoint);
 
-    this->shapeSplit = true; //will get set to false if no intersect
-    if ((shapeIntersectLine != NULL) && (intersectCrack != NULL))
+    if (intersect)
     {
-        Line borderDist(fractureLine.point1, shapeIntersectPoint);
-        Line crackDist(fractureLine.point1, shapeIntersectPoint);
-        if (borderDist.length() > crackDist.length())
-        {
-            fractureLine.point2 = shapeIntersectPoint;
-        }
-        else
-        {
-            fractureLine.point2 = crackIntersectPoint;
-        }
+        this->shapeSplit = true; //will get set to false if no intersect
+        fractureLine.point2 = intersectPoint;
     }
-    else if (shapeIntersectLine != NULL)
-    {
-        fractureLine.point2 = shapeIntersectPoint;
-    }
-    else if (intersectCrack != NULL)
-    {
-        fractureLine.point2 = crackIntersectPoint;
-    }
-    else
-    {
-        this->shapeSplit = false;
-    }
-    #if 0
+
+#if 0
 
     //First check all the shape lines
     vector<Line*>::iterator i;
@@ -672,6 +652,10 @@ void Crack::convertToLinesDelete(vector<Line*> *resultVec, Crack *toDelete)
     {
         parentCrack->convertToLinesDelete(resultVec, this);
     }
+    else
+    {
+        startLine->deleteCrack(this);
+    }
 }
 
 //This crack becomes a fragment of what it used to be.
@@ -709,14 +693,15 @@ void Crack::getSplitLines(vector<Line*> *splitLines)
     convertToLinesDelete(splitLines, NULL);
     //convertToLinesRemove?
     
-    if (!parentShape->lineIntersects(*backLine));
+    Crack *intersectCrack = NULL;
+    Point intersectPoint;
+    if (parentShape->lineIntersectsCrackNearest(*backLine, &intersectPoint,
+                                                 &intersectCrack, this))
     {
-
-    }
-
-
-    if (intersectCrack)
-    {
+        if (intersectPoint != backLine->point2)
+        {
+            cerr << "Well, that's interesting..." << endl;
+        }
         //step 1: split the crack that we intersected.
         Crack *newCrack = intersectCrack->splitOffAt(backLine->point2);
         if (!newCrack)
@@ -961,8 +946,8 @@ string Crack::generateJSON()
     
     //note: parentShape and startLine NOT tracked
     streamy << "{";
-    streamy <<"\"intersectCrack\":" << ((intersectCrack) ? "true" : "false");
-    streamy << ",\"parentShape\":" << ((parentShape) ? "true" : "false"); //debug only
+    //streamy <<"\"intersectCrack\":" << ((intersectCrack) ? "true" : "false");
+    streamy << "\"parentShape\":" << ((parentShape) ? "true" : "false"); //debug only
     streamy << ",\"doDelete\":" << ((doDelete) ? "true" : "false");
     streamy << ",\"shapeSplit\":" << ((shapeSplit) ? "true" : "false");
     streamy << ",\"lines\":";

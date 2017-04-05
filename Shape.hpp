@@ -29,6 +29,9 @@ private:
     static int saveNum;
 
 public:
+    bool projectile; //TODO: Shouldn't be public
+
+    Shape(std::vector<Shape*> *toDraw);
     Shape(std::vector<Point> givenPoints, std::vector<Shape*> *toDraw);
     Shape(std::vector<Line*> &givenLines, std::vector<Shape*> *toDraw);
     //Whether or not the given point is inside this shape
@@ -40,10 +43,12 @@ public:
     void setSpeed(double speed, double degrees); //in pixels per timestep
     void move(double distance, double degrees);
     void draw();
+    void collide();
 
     int rayTrace(Line &ray);
 
     void addPoint(Point toAdd);
+    Line *getLineNearest(const Point clickPoint) const;
     Crack *addCrack(Point impactPoint);
     int fractureAt(Point clickPoint);
     void distributeForce(Point impactPoint, double force, double radius,
@@ -62,6 +67,14 @@ public:
     bool pointOn(Point toCheck) const;
     bool lineIntersects(const Line &toCheck, Point *intersectPoint) const;
     bool lineIntersects(const Line &toCheck) const;
+    bool lineIntersectsBorderNearest(const Line &toCheck, 
+                                     Point *intersectPoint) const;
+    bool lineIntersectsCrackNearest(const Line &toCheck, 
+                                    Point *intersectPoint,
+                                    Crack **intersectCrack,
+                                    Crack *toIgnore) const;
+    bool lineIntersectsBorderCrackNearest(const Line &toCheck, 
+                                          Point *intersectPoint) const;
     int lineIntersectsCrack(const Line &toCheck, 
                              std::vector<Crack*> *intersectCracks,
                             std::vector<Point> *intersectPoints,
