@@ -282,6 +282,7 @@ void Crack::increaseOld(double force)
     JDL::flush();
 }
 
+//This is the currently used Increase
 void Crack::increaseOne(double force)
 {
     //New Idea:
@@ -398,6 +399,42 @@ void Crack::increaseOne(double force)
     //But we need to count how many shape lines it intersects
     //(if it intersects no lines, we're done)
 
+    //New Code:
+    //first, check all the shape lines
+    Point shapeIntersectPoint, crackIntersectPoint;
+    Line *shapeIntersectLine = NULL;
+    Crack *intersectCrack = NULL;
+    parentShape->lineIntersectsBorderNearest(fractureLine, &shapeIntersectPoint, &shapeIntersectLine);
+    parentShape->lineIntersectsCrackNearest(fractureLine, &crackIntersectPoint, &intersectCrack);
+
+    this->shapeSplit = true; //will get set to false if no intersect
+    if ((shapeIntersectLine != NULL) && (intersectCrack != NULL))
+    {
+        Line borderDist(fractureLine.point1, shapeIntersectPoint);
+        Line crackDist(fractureLine.point1, shapeIntersectPoint);
+        if (borderDist.length() > crackDist.length())
+        {
+            fractureLine.point2 = shapeIntersectPoint;
+        }
+        else
+        {
+            fractureLine.point2 = crackIntersectPoint;
+        }
+    }
+    else if (shapeIntersectLine != NULL)
+    {
+        fractureLine.point2 = shapeIntersectPoint;
+    }
+    else if (intersectCrack != NULL)
+    {
+        fractureLine.point2 = crackIntersectPoint;
+    }
+    else
+    {
+        this->shapeSplit = false;
+    }
+    #if 0
+
     //First check all the shape lines
     vector<Line*>::iterator i;
     Point intersectPoint;
@@ -448,7 +485,7 @@ void Crack::increaseOne(double force)
             }
         }       
     }
-    
+#endif
     //getTopParentCrack()->intersectCrack = intersectCrack;
     //intersectCrack = NULL;
     parentShape->save("saves/After_Increase.txt");
@@ -665,20 +702,23 @@ Crack *Crack::splitOffAt(Point splitPoint)
 
 void Crack::getSplitLines(vector<Line*> *splitLines)
 {
-    //TODO: We're going to ignore crack-crack intersections for now
-
-    //what to do?
-    //stuff! THINGS
-    //assume that this is the childmost crack?
+    Line *backLine = lines.back();
 
     //delete a crack from this line.
     //add all the lines in this crack.
     convertToLinesDelete(splitLines, NULL);
+    //convertToLinesRemove?
     
+    if (!parentShape->lineIntersects(*backLine));
+    {
+
+    }
+
+
     if (intersectCrack)
     {
         //step 1: split the crack that we intersected.
-        Crack *newCrack = intersectCrack->splitOffAt(lines.back()->point2);
+        Crack *newCrack = intersectCrack->splitOffAt(backLine->point2);
         if (!newCrack)
         {
             cerr << "Error: This crack does not end on intersectCrack" << endl;
@@ -704,7 +744,7 @@ void Crack::getSplitLines(vector<Line*> *splitLines)
         }
     }
 
-#if true    
+#if 1    
     JDL::setDrawColor(0, 255, 255);
     drawLines(*splitLines, 0);
     JDL::setDrawColor(255, 255, 255);
@@ -717,7 +757,7 @@ void Crack::getSplitLines(vector<Line*> *splitLines)
 #endif
 }
 
-#if false
+#if 0
 void Crack::getSplitLines(vector<Line*> *splitLines)
 {
     //TODO: We're going to ignore crack-crack intersections for now

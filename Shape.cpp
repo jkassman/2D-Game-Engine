@@ -471,7 +471,7 @@ void Shape::split(vector<Line*> &splitLines)
     //copy splitLines
     vector<Line*> splitLinesCopy1;
     vector<Line*> splitLinesCopy2;
-#if false
+#if 0
     for (l = splitLines.begin(); l != splitLines.end(); ++l)
     {
         splitLinesCopy1.push_back(new Line(**l));

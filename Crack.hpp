@@ -16,7 +16,7 @@ class Crack
 {
 private:
     std::vector<Line*> lines;
-    Crack *intersectCrack;
+    //Crack *intersectCrack;
     bool doDelete;
     //Crack *temp;
 
