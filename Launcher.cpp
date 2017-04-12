@@ -14,6 +14,9 @@ Launcher::Launcher(vector<Shape*> *toDraw) : Shape(toDraw)
     addPoint(Point(width, height));
     addPoint(Point(0, height));
 
+    setBounds(0, 800, 0, 800);
+    setBoundType(SHAPE_BOUND_BOUNCE);
+
     center = Point(width/2, height/2);
 
     move(600, 0);
@@ -34,7 +37,9 @@ void Launcher::fire()
     createProjectileLines(Point(center.x - width/2, center.y), 10, 10,
                           &projectileLines);
     Shape *projectile = new Shape(projectileLines, toDraw);
-    projectile->setSpeed(10, 180);
+    projectile->setBounds(0, 800, 0, 800);
+    projectile->setBoundType(SHAPE_BOUND_BOUNCE);
+    projectile->setVelocity(10, 180);
     projectile->projectile = true;
     
     cout << "ATTACK" << endl;

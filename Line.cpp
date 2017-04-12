@@ -1,5 +1,6 @@
 #include "Line.hpp"
 #include "JDL.hpp"
+#include "jacobJSON.hpp"
 
 #define _USE_MATH_DEFINES
 
@@ -20,10 +21,18 @@ Line::Line()
 
 }
 
+Line::Line(Point thePoint)
+{
+    this->point1 = thePoint;
+    this->point2 = thePoint;
+    this->ignorePoint = 0;
+}
+
 Line::Line(Point point1, Point point2)
 {
     this->point1 = point1;
     this->point2 = point2;
+    this->ignorePoint = 0;
 }
 
 Line::Line(Point point1, double length, double direction)
@@ -31,58 +40,41 @@ Line::Line(Point point1, double length, double direction)
     this->point1 = point1;
     this->point2 = Point(point1.x + cos(direction*M_PI / 180) * length, 
                          point1.y + sin(direction*M_PI / 180) * length);
+    this->ignorePoint = 0;
 }
 
 Line::Line(const Line & other)
 {
     this->point1 = other.point1;
     this->point2 = other.point2;
-    //this->index = other.index;
-
-    vector<Crack*>::const_iterator i;
-    for (i = other.cracks.begin(); i != other.cracks.end(); ++i)
-    {
-        this->cracks.push_back(new Crack(**i));
-    }  
+    this->ignorePoint = other.ignorePoint;
 }
 
 Line::Line(std::string jsonString)
 {
-    string jsonPoint1, jsonPoint2, jsonCracksString;
-    vector<string> jsonCracks;
-    vector<string>::iterator i;
-    
+    string jsonPoint1, jsonPoint2, ignorePointString;
+     
     jsonPoint1 = grabJsonValue(jsonString, "point1");
     jsonPoint2 = grabJsonValue(jsonString, "point2");
-    jsonCracksString = grabJsonValue(jsonString, "cracks");
-
-    if (jsonCracksString.length())
-    {
-        parseJsonList(&jsonCracksString, &jsonCracks);
-
-        for (i = jsonCracks.begin(); i != jsonCracks.end(); ++i)
-        {
-            this->cracks.push_back(new Crack(*i, this));
-        }
-    }
-    /*
-    cout << "Point1: " << jsonPoint1 << " | Point2: " << jsonPoint2
-        << " | Cracks: " << jsonCracks << endl;
-    */
+    ignorePointString = grabJsonValue(jsonString, "ignorePoint");
 
     this->point1 = Point(jsonPoint1);
     this->point2 = Point(jsonPoint2);
+    this->ignorePoint = atoi(ignorePointString.c_str());
+}
+
+void Line::scale(double factor)
+{
+    point1.x *= factor;
+    point2.x *= factor;
+    point1.y *= factor;
+    point2.y *= factor;
 }
 
 void Line::move(double distance, double degrees)
 {
     point1.move(distance, degrees);
     point2.move(distance, degrees);
-    vector<Crack*>::iterator i;
-    for (i = cracks.begin(); i != cracks.end(); ++i)
-    {
-        (*i)->move(distance, degrees);
-    }
 }
 
 #ifndef JDL_USE_SDL
@@ -108,21 +100,16 @@ void Line::draw() const
 {
     JDL::line(JDL::roundi(point1.x), JDL::roundi(point1.y),
               JDL::roundi(point2.x), JDL::roundi(point2.y));
-    vector<Crack*>::const_iterator i;
-    for (i = cracks.begin(); i != cracks.end(); ++i)
-    {
-        /*
-        JDL::text(JDL::roundi((*i)->startPoint().x),
-                  JDL::roundi((*i)->startPoint().y),
-                  to_string(i - cracks.begin()).c_str());
-         */
-        (*i)->draw();
-    }
 }
 
 double Line::length() const
 {
     return sqrt(pow(point1.x-point2.x, 2) + pow(point1.y - point2.y, 2));
+}
+
+bool Line::isPoint()
+{
+    return (point1 == point2);
 }
 
 //check if the two lines (not segments) intersect
@@ -225,14 +212,39 @@ bool Line::rayIntersects(const Line &otherLine, Point *resultPoint) const
 //check if the two line segments intersect
 bool Line::intersects(const Line &otherLine, Point *resultPoint) const
 {
-    Point temp;
-    if (!intersectsInfinite(otherLine, &temp))
+    Point tempIntersect;
+    if (!intersectsInfinite(otherLine, &tempIntersect))
     {
         return false;
     }
-    if (this->on(temp) && otherLine.on(temp))
+    if (this->on(tempIntersect) && otherLine.on(tempIntersect))
     {
-        *resultPoint = temp;
+        vector<Point> ignorePoints;
+        if (this->ignorePoint == 1 || this->ignorePoint == 3)
+        {
+            ignorePoints.push_back(this->point1);
+        }
+        if (this->ignorePoint == 2 || this->ignorePoint == 3)
+        {
+            ignorePoints.push_back(this->point2);
+        }
+        if (otherLine.ignorePoint == 1 || otherLine.ignorePoint == 3)
+        {
+            ignorePoints.push_back(otherLine.point1);
+        }
+        if (otherLine.ignorePoint == 2 || otherLine.ignorePoint == 3)
+        {
+            ignorePoints.push_back(otherLine.point2);
+        }
+        vector<Point>::iterator p;
+        for (p = ignorePoints.begin(); p != ignorePoints.end(); ++p)
+        {
+            if (tempIntersect == *p)
+            {
+                return false;
+            }
+        }
+        *resultPoint = tempIntersect;
         return true;
     }
     return false;
@@ -400,6 +412,7 @@ bool Line::coincident(const Line &other) const
     return (on(other.point1) && on(other.point2));
 }
 
+/*
 //returns the number of cracks found
 int Line::getImpactedCracks(Point clickPoint, Shape *parentShape, 
                              vector<Crack*> *impactedCracks)
@@ -417,12 +430,7 @@ int Line::getImpactedCracks(Point clickPoint, Shape *parentShape,
     }
     return numCracks;
 }
-
-Crack *Line::addCrack(Point impactPoint, Shape *parentShape)
-{
-    cracks.push_back(new Crack(parentShape, impactPoint, this));
-    return cracks.back();
-}
+*/
 
 /*             
 int Line::increaseCracks(Point impactPoint, Shape *parentShape, double force)
@@ -497,20 +505,6 @@ void Line::split(Point splitPoint, Line *newLine)
     newLine->point2 = point2;
 
     point2 = splitPoint;
-    //split up the cracks:
-    vector<Crack*>::iterator i = cracks.begin();
-    while (i != cracks.end())
-    {
-        if (on((*i)->startPoint()))
-        {
-            ++i;
-        }
-        else
-        {
-            newLine->cracks.push_back(*i);
-            i = cracks.erase(i);
-        }
-    }
 }
 
 
@@ -530,31 +524,6 @@ double Line::getDirection() const
     return direction;
 }
 
-void Line::setCrackParents(Shape *crackParentShape)
-{
-    vector<Crack*>::iterator c;
-    for (c = cracks.begin(); c != cracks.end(); ++c)
-    {
-        (*c)->setParent(crackParentShape);
-    }
-}
-
-//returns number of cracks deleted (1 or 0)
-//NOTE: Should not destruct the cracks. Build a destructCrack for that if needed
-int Line::deleteCrack(Crack *toDelete)
-{
-    vector<Crack*>::iterator c;
-    for (c = cracks.begin(); c != cracks.end(); ++c)
-    {
-        if (*c == toDelete)
-        {
-            cracks.erase(c);
-            return 1;
-        }
-    }
-    return 0;
-}
-
 void drawLines(vector<Line*> toDraw, double secondsToSleep)
 {
     vector<Line*>::iterator l;
@@ -565,7 +534,7 @@ void drawLines(vector<Line*> toDraw, double secondsToSleep)
         JDL::sleep(secondsToSleep);
     }
 }
-
+#if 0
 string Line::generateJSON()
 {
     string toReturn;
@@ -575,6 +544,7 @@ string Line::generateJSON()
     streamy << "{" << "\"point1\":" << point1.generateJSON()
             << "," << "\"point2\":" << point2.generateJSON();
     toReturn = streamy.str();
+    /*
     if (cracks.size() > 0)
     {
         toReturn += ",\"cracks\":[";
@@ -589,11 +559,30 @@ string Line::generateJSON()
         }
         toReturn += "]";
     }
+    */
     toReturn += "}";
     return toReturn;
 }
+#endif
 
-bool Line::sanityCheck(Shape *parentShape)
+
+string Line::generateJSON() const
+{
+    string toReturn;
+    stringstream streamy;
+    //streamy << "Line" << index << ": {";
+    //toReturn = streamy.str();
+    streamy << "{" << "\"point1\":" << point1.generateJSON()
+            << "," << "\"point2\":" << point2.generateJSON()
+            << "," << "\"ignorePoint\":" << ignorePoint 
+            << "}";
+    toReturn = streamy.str();
+    
+    return toReturn;
+}
+
+/*
+bool Line::sanityCheck()
 {
     vector<Crack*>::iterator c;
     bool toReturn = true;
@@ -606,3 +595,4 @@ bool Line::sanityCheck(Shape *parentShape)
     }
     return toReturn;
 }
+*/

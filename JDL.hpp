@@ -63,6 +63,8 @@ public:
     static int roundi(double toRound);
     static bool doublesEqual(double d1, double d2);
     static double randDouble(double rangeStart, double rangeEnd);
+    static double stringToDouble(std::string toConvert);
+    static int stringToInt(std::string toConvert);
     static double calculateTheta(double x, double y);
     static int location(double x, double y);
 

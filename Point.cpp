@@ -2,10 +2,12 @@
 #include "JDL.hpp"
 
 #include "Line.hpp"
+#include "jacobJSON.hpp"
 
 #include <iostream>
 #include <sstream>
 #include <math.h>
+#include <cstdlib>
 
 using namespace std;
 
@@ -32,14 +34,9 @@ Point::Point(string jsonString)
     string xString, yString;
     xString = grabJsonValue(jsonString, "x");
     yString = grabJsonValue(jsonString, "y");
-
-#ifdef JDL_USE_STL
-    this->x = stod(xString);
-    this->y = stod(yString);
-#else
-    this->x = atof(xString.c_str());
-    this->y = atof(yString.c_str());
-#endif
+    
+    this->x = JDL::stringToDouble(xString);
+    this->y = JDL::stringToDouble(yString);
 }
 
 void Point::print() const

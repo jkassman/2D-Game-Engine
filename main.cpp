@@ -3,6 +3,8 @@
 #include "JDL.hpp"
 
 #include <iostream>
+#include <fstream>
+#include <sstream>
 
 #ifdef JDL_USE_SDL
 #include <Windows.h>
@@ -20,6 +22,8 @@ int main(int argc, char **argv)
     points.push_back(Point(100, 200));
     points.push_back(Point(200, 100));
     toDraw.push_back(new Shape(points, &toDraw));
+    toDraw.back()->setBoundType(SHAPE_BOUND_BOUNCE);
+    toDraw.back()->setBounds(0, 800, 0, 800);
 
     const int WIDTH = 800;
     const int HEIGHT = 800;
@@ -44,6 +48,7 @@ int main(int argc, char **argv)
 #ifndef JDL_USE_SDL
     srand(time(NULL));
 #endif
+    int storyNum = 0;
     while (!quit)
     {
     //get input
@@ -68,15 +73,37 @@ int main(int argc, char **argv)
         }
 
     //interpret input
-        vector <Line*> newLines;
+        double moveDist = 50;
+        vector<Shape*>::iterator s;
+        string filename;
+        stringstream streamy;
         switch (input)
         {
+        case 'n':
+            //load story
+            streamy << "story/save" << storyNum << ".txt";
+            storyNum++;
+            toDraw.clear(); //TODO: memory leaks yay
+            cout << "trying to load from " << streamy.str() << "." << endl;
+            loadShapes(streamy.str(), &toDraw);
+            break;
+        case 'p':
+            //load previous story
+            storyNum--;
+            streamy << "story/save" << storyNum << ".txt";
+
+            toDraw.clear(); //TODO: Memory leaks
+            cout << "trying to load from " << filename << "." << endl;
+            loadShapes(streamy.str(), &toDraw);
+            break;
         case 'q':
             quit = true;
             break;
         case 'b':
             mode = 1;
             building = new Shape(newPoints, &toDraw);
+            building->setBoundType(SHAPE_BOUND_BOUNCE);
+            building->setBounds(0, 800, 0, 800);
             toDraw.push_back(building);
             break;
         case 'f':
@@ -85,11 +112,64 @@ int main(int argc, char **argv)
         case 'a':
             launchy.fire();
             break;
+        case 's':
+            //stop everything
+            for (s = toDraw.begin(); s != toDraw.end(); ++s)
+            {
+                (*s)->setVelocity(0, 0);
+            }
+            break;
+        case '=':
+            //zoom in
+            for (s = toDraw.begin(); s != toDraw.end(); ++s)
+            {
+                (*s)->scale(2);
+            }
+            break;
+        case '-':
+            //zoom out
+            for (s = toDraw.begin(); s != toDraw.end(); ++s)
+            {
+                (*s)->scale(0.5);
+            }
+            break;
+        case '1':
+            //move left
+            for (s = toDraw.begin(); s != toDraw.end(); ++s)
+            {
+                (*s)->move(moveDist, 180);
+            }
+            break;
+
+        case '2':
+            //move right
+            for (s = toDraw.begin(); s != toDraw.end(); ++s)
+            {
+                (*s)->move(moveDist, 0);
+            }
+            break;
+        case '3':
+            //move down
+            for (s = toDraw.begin(); s != toDraw.end(); ++s)
+            {
+                (*s)->move(moveDist, 90);
+            }
+            break;
+        case '4':
+            //move up
+            for (s = toDraw.begin(); s != toDraw.end(); ++s)
+            {
+                (*s)->move(moveDist, -90);
+            }
+            break;
+        case 'o':
+            toDraw.clear(); //TODO: memory leaks yay
+            loadShapes("toLoad.txt", &toDraw);
+            break;
         case 'l':
-            toDraw.clear(); //memory leaks yay
-            loadLines("toLoad.txt", &newLines);
-            toDraw.push_back(new Shape(newLines, &toDraw));
-            toDraw.back()->updateCrackParents();
+            toDraw.clear(); //TODO: memory leaks yay
+            toDraw.push_back(loadShape("toLoad.txt", &toDraw));
+            break;
         case 1:
             //handle modes
             switch (mode)
@@ -107,6 +187,21 @@ int main(int argc, char **argv)
                         break;
                     }
                 }
+                //TODO: This is going to be hacky
+                bool splitOccurred = true;
+                while (splitOccurred)
+                {
+                    splitOccurred = false;
+                    for (s = toDraw.begin(); s != toDraw.end(); ++s)
+                    {
+                        if ((*s)->tryOneSplit())
+                        {
+                            splitOccurred = true;
+                            break;
+                        }
+                    }
+                }
+                saveShapes("saves/All_After_Split.txt", &toDraw);
                 //cout << "time to draw!" << endl;
                 break;
             }
@@ -130,6 +225,7 @@ int main(int argc, char **argv)
         for (i = toDraw.begin(); i != toDraw.end(); ++i)
         {
             (*i)->move();
+            (*i)->checkBounds();
             (*i)->collide();
             (*i)->draw();
         }

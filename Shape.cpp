@@ -1,73 +1,179 @@
 #include "Shape.hpp"
 #include "JDL.hpp"
+#include "jacobJSON.hpp"
 
 #define _USE_MATH_DEFINES
 
 #include <iostream>
 #include <algorithm>
 #include <math.h>
- #include <fstream>
- //#include <sstream>
+#include <fstream>
+#include <sstream>
 
- using namespace std;
- Shape::Shape(vector<Point> givenPoints, vector<Shape*> *toDraw)
- {
-     this->projectile = false;
-     this->speed = 0;
-     this->direction = 0;
-     this->toDraw = toDraw;
-     vector<Point>::iterator i;
-     vector<Point>::iterator next;
-     for (i = givenPoints.begin(); i != givenPoints.end(); ++i)
-     {
-         if ((i + 1) == givenPoints.end())
-         {
-             next = givenPoints.begin();
-         }
-         else
-         {
-             next = i + 1;
-         }
-         addPoint(*next);
-     }
- }
+using namespace std;
 
- Shape::Shape(vector<Line*> &givenLines, vector<Shape*> *toDraw)
- {
-     this->speed = 0;
-     this->direction = 0;
-     this->projectile = false;
-     this->toDraw = toDraw;
-     this->lines = givenLines;
- }
+//corners are 0-3;
+int Shape::newestID = 4;
 
-Shape::Shape(vector<Shape*> *toDraw)
+void Shape::initNull()
 {
+    this->bound = SHAPE_BOUND_NONE;
     this->projectile = false;
     this->speed = 0;
     this->direction = 0;
-    this->toDraw = toDraw; 
+    this->xMinBound = 0;
+    this->xMaxBound = 400;
+    this->yMinBound = 0;
+    this->yMaxBound = 400;
+   
+    this->ID = newestID;
+    newestID++;
+    //this->subID = 0;
+    this->center = Point(0,0);
+    this->estRadius = 0;
+    this->lastHit = -1;
+}
+
+void Shape::init(vector<Shape*> *toDraw)
+{
+    initNull();
+    this->toDraw = toDraw;
+}
+
+Shape::Shape(vector<Point> givenPoints, vector<Shape*> *toDraw)
+{
+    init(toDraw);
+    vector<Point>::iterator i;
+    vector<Point>::iterator next;
+#if 0
+    cout << "You should not leave your code unattended. hahahaha" << endl;
+#endif
+    for (i = givenPoints.begin(); i != givenPoints.end(); ++i)
+    {
+        if ((i + 1) == givenPoints.end())
+        {
+            next = givenPoints.begin();
+        }
+        else
+        {
+            next = i + 1;
+        }
+        addPoint(*next);
+    }
+    calculateCenter();
+}
+
+Shape::Shape(vector<Line*> &givenLines, vector<Shape*> *toDraw)
+{
+    init(toDraw);
+    //this->lines = givenLines;
+    vector<Line*>::iterator l;
+    for (l = givenLines.begin(); l != givenLines.end(); ++l)
+    {
+        lines.push_back(*l);
+    }
+    calculateCenter();
+}
+
+Shape::Shape(vector<Shape*> *toDraw)
+{
+    init(toDraw);
+}
+
+Shape::Shape(string jsonString, vector<Shape*> *toDraw)
+{
+    this->toDraw = toDraw;
+    string xMinBoundString = grabJsonValue(jsonString, "xMinBound");
+    string xMaxBoundString = grabJsonValue(jsonString, "xMaxBound");
+    string yMinBoundString = grabJsonValue(jsonString, "yMinBound");
+    string yMaxBoundString = grabJsonValue(jsonString, "yMaxBound");
+    string boundString = grabJsonValue(jsonString, "bound");
+    string speedString = grabJsonValue(jsonString, "speed");
+    string directionString = grabJsonValue(jsonString, "direction");
+    string linesString = grabJsonValue(jsonString, "lines");
+    string cracksString = grabJsonValue(jsonString, "cracks");
+    
+    this->speed = JDL::stringToDouble(speedString);
+    this->direction = JDL::stringToDouble(directionString);
+    this->xMinBound = JDL::stringToInt(xMinBoundString);
+    this->xMaxBound = JDL::stringToInt(xMaxBoundString);
+    this->yMinBound = JDL::stringToInt(yMinBoundString);
+    this->yMaxBound = JDL::stringToInt(yMaxBoundString);
+
+    vector<string> jsonLines;
+    parseJsonList(&linesString, &jsonLines);
+    vector<string>::iterator i;
+    for (i = jsonLines.begin(); i != jsonLines.end(); ++i)
+    {
+        lines.push_back(new Line(*i));
+    }
+    vector<string> jsonCracks;
+    parseJsonList(&cracksString, &jsonCracks);
+    for (i = jsonCracks.begin(); i != jsonCracks.end(); ++i)
+    {
+        string jsonLine = grabJsonValue(*i, "line");
+        cracks.push_back(new Crack(*i, jsonLine, NULL));
+    }
+
+    //determine bound type
+    if (boundString == "none")
+    {
+        this->bound = SHAPE_BOUND_NONE;
+    }
+    else if (boundString == "destroy")
+    {
+        this->bound = SHAPE_BOUND_DESTROY;
+    }
+    else if (boundString == "bounce")
+    {
+        this->bound = SHAPE_BOUND_BOUNCE;
+    }
+    else if (boundString == "wrap")
+    {
+        this->bound = SHAPE_BOUND_WRAP;
+    }
+    else
+    {
+        cerr << "ERROR: Bound type not recognized!" << endl;
+    }
+    calculateCenter();
+}
+
+void Shape::scale(double factor)
+{
+    vector<Line*>::iterator l;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        (*l)->scale(factor);
+    }
+    vector<Crack*>::iterator c;
+    for (c = cracks.begin(); c != cracks.end(); ++c)
+    {
+        (*c)->scale(factor);
+    }
 }
 
  void Shape::move(double distance, double degrees)
  {
-     vector<Line*>::iterator i;
-     for (i = lines.begin(); i != lines.end(); ++i)
+     vector<Line*>::iterator l;
+     for (l = lines.begin(); l != lines.end(); ++l)
      {
-         (*i)->move(distance, degrees);
+         (*l)->move(distance, degrees);
      }
+     vector<Crack*>::iterator c;
+     for (c = cracks.begin(); c != cracks.end(); ++c)
+     {
+         (*c)->move(distance, degrees);
+     }
+     center.move(distance, degrees);
  }
 
  void Shape::move()
  {
-     vector<Line*>::iterator i;
-     for (i = lines.begin(); i != lines.end(); ++i)
-     {
-         (*i)->move(speed, direction);
-     }
+     move(speed, direction);
  }
 
- void Shape::setSpeed(double speed, double degrees)
+ void Shape::setVelocity(double speed, double degrees)
  {
      this->speed = speed;
      this->direction = degrees;
@@ -75,25 +181,64 @@ Shape::Shape(vector<Shape*> *toDraw)
 
  void Shape::draw()
  {
-     vector<Line*>::iterator i;
-     for (i = lines.begin(); i != lines.end(); ++i)
+     center.drawCircle(5);
+     vector<Line*>::iterator l;
+     for (l = lines.begin(); l != lines.end(); ++l)
      {
-         (*i)->draw();
+         (*l)->draw();
+     }
+     vector<Crack*>::iterator c;
+     for (c = cracks.begin(); c != cracks.end(); ++c)
+     {
+         (*c)->draw();
      }
  }
 
 void Shape::collide()
 {
-    if (!projectile) return;
+#if 0
     vector<Shape*>::iterator s;
     vector<Line*>::iterator l;
+    for (s = toDraw->begin(); s != toDraw->end(); ++s)
+    {
+        if ((*s) == this) continue;
+        if ((lastHit == (*s)->ID) && ((*s)->lastHit == ID)) continue;
+        if ((*s)->ID == ID) continue;
+        if (center.near((*s)->center, estRadius + (*s)->estRadius))
+        {
+            for (l = this->lines.begin(); l != this->lines.end(); ++l)
+            {
+                Point crashPoint = (*l)->point1;
+                if ((*s)->inside(crashPoint))
+                {
+                    newestID++;
+                    this->ID = newestID;
+                    newestID++;
+                    (*s)->ID = newestID;
+                    
+                    this->lastHit = (*s)->ID;
+                    (*s)->lastHit = this->ID;
+
+                    speed = -speed;
+                    (*s)->speed = -(*s)->speed;
+                    
+                    fractureAt(crashPoint);
+                    (*s)->fractureAt(crashPoint);
+                    return;
+                }
+            }
+        }
+    }
+/*
+    if (!projectile) return;
+    
     for (l = lines.begin(); l != lines.end(); ++l)
     {
         //for all other shapes
         for (s = toDraw->begin(); s != toDraw->end(); ++s)
         {
             if (*s == this) continue;
-            if (projectile && (*s)->inside((*l)->point1))
+            if ((*s)->inside((*l)->point1))
             {
                 Point crashPoint = (*l)->point1;
                 direction += 180;
@@ -106,8 +251,125 @@ void Shape::collide()
             }
         }
     }
+*/
+#endif
 }
 
+void Shape::setBounds(int xMin, int xMax, int yMin, int yMax)
+{
+    xMinBound = xMin;
+    xMaxBound = xMax;
+    yMinBound = yMin;
+    yMaxBound = yMax;
+}
+
+void Shape::setBoundType(BoundType toSet)
+{
+    this->bound = toSet;
+}
+
+void Shape::copyBounds(const Shape &other)
+{
+    this->xMinBound = other.xMinBound;
+    this->xMaxBound = other.xMaxBound;
+    this->yMinBound = other.yMinBound;
+    this->yMaxBound = other.yMaxBound;
+    this->bound = other.bound;
+}
+
+void Shape::checkBounds()
+{
+    switch (this->bound)
+    {
+    case SHAPE_BOUND_NONE:
+        break;
+    case SHAPE_BOUND_DESTROY:
+    case SHAPE_BOUND_WRAP:
+        cerr << "Bounding strategy not yet implemented!" << endl;
+        break;
+    case SHAPE_BOUND_BOUNCE:
+        boundBounce();
+        break;
+    }
+}
+
+void Shape::boundBounce()
+{
+    CornerType corner;
+    corner = cornerOutOfBounds();
+    double xMagnitude = cos(M_PI/180.0 * direction) * speed;
+    double yMagnitude = sin(M_PI/180.0 * direction) * speed;
+    switch (corner)
+    {
+    case SHAPE_CORNER_LEFT:
+        //make the shape go right
+        if (xMagnitude < 0) xMagnitude = -xMagnitude;
+        else cout << "Already going right, skipping" << endl;
+        break;
+    case SHAPE_CORNER_RIGHT:
+        //make the shape go left;
+        if (xMagnitude > 0) xMagnitude = -xMagnitude;
+        else cout << "Already going left, skipping" << endl;
+        break;
+    case SHAPE_CORNER_UP:
+        //make the shape go down;
+        if (yMagnitude < 0) yMagnitude = -yMagnitude;
+        else cout << "Already going down, skipping" << endl;
+        break;
+    case SHAPE_CORNER_DOWN:
+        //make the shape go up;
+        if (yMagnitude > 0) yMagnitude = -yMagnitude;
+        else cout << "Already going up, skipping" << endl;
+        break;
+    case SHAPE_CORNER_BOTH:
+        this->speed = -this->speed;
+        cout << "Double bounce magic!" << endl;
+        return;
+    case SHAPE_CORNER_NONE:
+        return;
+    }
+    Line newVelocity(Point(0,0), Point(xMagnitude, yMagnitude));
+    this->direction = newVelocity.getDirection();
+    this->speed = newVelocity.length();
+
+#if 0
+    if (xMagnitude < 0)
+    {
+        cout << "I bet you will never guess who this is." << endl;
+        cout << "OH MY GOD IT'S THE MATRIX YES I'M NEO" << endl;
+    }
+#endif
+}
+
+//TODO: Actually check for SHAPE_CORNER_BOTH
+CornerType Shape::cornerOutOfBounds()
+{
+    vector<Line*>::iterator l;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        double x = (*l)->point2.x;
+        double y = (*l)->point2.y;
+        if (x < xMinBound)
+        {
+            return SHAPE_CORNER_LEFT;
+        }
+        if (x > xMaxBound)
+        {
+            return SHAPE_CORNER_RIGHT;
+        }
+        if (y < yMinBound)
+        {
+            return SHAPE_CORNER_UP;
+        }
+        if (y > yMaxBound)
+        {
+            return SHAPE_CORNER_DOWN;
+        }
+    }
+    return SHAPE_CORNER_NONE;
+}
+
+/*
  Crack *Shape::addCrack(Point impactPoint)
  {
      vector<Line*>::iterator l;
@@ -121,17 +383,16 @@ void Shape::collide()
      }
      return NULL;
  }
-
+*/
  //returns how many cracks were affected
  int Shape::fractureAt(Point clickPoint)
  {
      vector<Crack*> children;
      vector<Line*> splitLines;
-     //vector<int> forces;
-     //vector<Point> hitPoints;
-     Point impactPoint(0,0);
+     vector<Crack*> splitCracks;
+     Point impactPoint;
 
-     double force = 50;
+     double force = 21;
      double radius = 10;
 
      Crack *toIncrease = NULL;
@@ -142,81 +403,55 @@ void Shape::collide()
      }
      toIncrease = getAffectedCrack(impactPoint, radius);
 
-     if (!toIncrease) cerr << "PROBLEMS" << endl;
-
      toIncrease->getGrandestChildren(&children);
-     splitChildren(&children);     
+     splitChildren(&children); //TODO: Is this the best place for this?    
      vector<Crack*>::iterator c;
      for (c = children.begin(); c != children.end(); ++c)
      {
          //(*c)->increaseOne(force/children.size());
-         (*c)->increaseOne(force);
+         (*c)->expand(force, this);
      }
 
+     /*
      for (c = children.begin(); c != children.end(); ++c)
      {
          if ((*c)->isShapeSplit())
          {
              splitLines.clear();
-             (*c)->getSplitLines(&splitLines);
-             (*c)->clearLines(); //so the destructor doesn't erase the lines
-             (*c)->getStartLine()->deleteCrack(*c);
-             (*c)->parentShape->split(splitLines);
+             (*c)->getSplitLinesAndCracks(&splitLines, &splitCracks, this);
+             getShapeWithCrack(*c)->split(splitLines, splitCracks);
          }
      }
+     */
 
      return children.size();
+}
 
- #ifdef THREE_TWENTYEIGHT_OLD_CODE
-     save("saves/Before_Click.txt");
-     vector<Crack*> impactedCracks;
-     vector<Line*>::iterator i;
-     double force = 50;
-     int numCracks = 0;
-     for (i = lines.begin(); i != lines.end(); ++i)
-     {
-         Point result;
-         if ((*i)->on(clickPoint, 10, &result))
-         {
-             //JDL::circle(result.x, result.y, 8);            
-             numCracks += (*i)->getImpactedCracks(clickPoint, this,
-                                                  &impactedCracks);
-         }
-     }
-     if (numCracks == 0)
-     {
-         Crack *newCrack = addCrack(clickPoint);
-         if (newCrack)
-         {
-             cout << "Creating New Crack" << endl;
-             impactedCracks.push_back(newCrack);
-         }
-         else
-         {
-             //The affected shape was not near the click
-             //TODO: Check for problems here
-         }
-     }
-
-     //now update the cracks that we have gathered.
-     vector<Crack*>::iterator c;
-     vector<Line*> splitLines;
-     //cout << impactedCracks.size() << endl;
-     for (c = impactedCracks.begin(); c != impactedCracks.end(); ++c)
-     {
-         //eventually, modify force here based on size of impactedCracks
-         (*c)->increase(force);
-         if ((*c)->isShapeSplit())
-         {
-             (*c)->getSplitLines(&splitLines);
-             (*c)->clearLines(); //so the destructor doesn't erase the lines
-             (*c)->getStartLine()->deleteCrack(*c);
-             split(splitLines);
-         }
-     }
-     return impactedCracks.size();
-
-#endif
+//if there are any cracks with isShapeSplit == true,
+//run split on the first one found.
+//Return true if any split occured, false otherwise.
+bool Shape::tryOneSplit()
+{
+    vector<Line*> splitLines;
+    vector<Crack*> splitCracks;
+    vector<Crack*> grandChildren;
+    
+    vector<Crack*>::iterator c, c2;
+    for (c = cracks.begin(); c != cracks.end(); ++c)
+    {
+        grandChildren.clear();
+        (*c)->getGrandestChildren(&grandChildren);
+        for (c2 = grandChildren.begin(); c2 != grandChildren.end(); ++c2)
+        {
+            if ((*c2)->isShapeSplit())
+            {
+                (*c2)->getSplitLinesAndCracks(&splitLines, &splitCracks, this);
+                split(splitLines, splitCracks);
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 void Shape::addPoint(Point toAdd)
@@ -230,9 +465,10 @@ void Shape::addPoint(Point toAdd)
         lines.back()->point2 = toAdd;
         lines.push_back(new Line(toAdd, lines[0]->point1));
     }
-    //lines.back()->index = lines.size()-1;
+    calculateCenter();
 }
 
+/*
 Line *Shape::getLineNearest(Point clickPoint) const
 {
     vector<Line*>::const_iterator l;
@@ -274,7 +510,7 @@ Crack * Shape::getAffectedCrack(Point impactPoint, double radius)
     Line *lineOn = getLineNearest(impactPoint);
     for (l = lines.begin(); l != lines.end(); ++l)
     {
-        if (*l == lineOn)
+        if ((*l)->on(impactPoint))
         {
             lon = l;
             break;
@@ -361,6 +597,43 @@ Crack * Shape::getAffectedCrack(Point impactPoint, double radius)
     }
     return toReturn;
 }
+*/
+ 
+//returns the nearest crack within radius.
+//If there is no crack within radius, create a new crack at impactPoint
+Crack *Shape::getAffectedCrack(Point impactPoint, double radius)
+{
+    vector<Crack*>::iterator c;
+    Crack * closestCrack = NULL;
+    double minDist = radius;
+    for (c = cracks.begin(); c != cracks.end(); ++c)
+    {
+        double dist = Line(impactPoint, (*c)->startPoint()).length();
+        if (dist < minDist)
+        {
+            minDist = dist;
+            closestCrack = *c;
+        }
+    }
+    /*
+    Crack *toReturn = NULL;
+    if (closestCrack == NULL)
+    {
+        toReturn = new Crack(impactPoint);
+        cracks.push_back(toReturn);
+    }
+    else
+    {
+        toReturn = closestCrack->addChild();
+    }
+    */
+    if (closestCrack == NULL)
+    {
+        closestCrack = new Crack(impactPoint);
+        cracks.push_back(closestCrack);
+    }
+    return closestCrack;
+}
 
 //assume forces and hitPoints are empty.
 //fills both of them to correspond to lines.
@@ -433,7 +706,6 @@ bool Shape::lineIntersects(const Line &toCheck, Point *intersectPoint) const
     return false;
 }
 
-//ignore intersects on point1!
 bool Shape::lineIntersectsBorderNearest(const Line &toCheck, 
                                   Point *intersectPoint) const
 {
@@ -445,10 +717,6 @@ bool Shape::lineIntersectsBorderNearest(const Line &toCheck,
     {
         if ((*l)->intersects(toCheck, intersectPoint))
         {
-            if (*intersectPoint == toCheck.point1)
-            {
-                continue;
-            }
             numIntersects++;
             intersectPoints.push_back(*intersectPoint);
         }
@@ -471,20 +739,21 @@ bool Shape::lineIntersectsBorderNearest(const Line &toCheck,
     return true;    
 }
 
-//ignore intersects on point1!
 bool Shape::lineIntersectsCrackNearest(const Line &toCheck, 
                                        Point *intersectPoint,
                                        Crack **intersectCrack,
-                                       Crack *toIgnore) const
+                                       const Crack *toIgnore) const
 {
     vector<Crack*> intersectCracks;
     vector<Point> intersectPoints;
     lineIntersectsCrack(toCheck, &intersectCracks, &intersectPoints,
                         toIgnore);
 
-    //remove any point1 intersects:
     vector<Point>::iterator p;
     vector<Crack*>::iterator c = intersectCracks.begin();
+
+/*
+    //remove any point1 intersects:    
     for (p = intersectPoints.begin(); p != intersectPoints.end();)
     {
         if (*p == toCheck.point1)
@@ -498,9 +767,9 @@ bool Shape::lineIntersectsCrackNearest(const Line &toCheck,
             ++p;
         }
     }
+*/
 
     if (intersectPoints.size() == 0) return false;
-
     
     double minDist = Line(toCheck.point1, *intersectPoints.begin()).length();
     *intersectPoint = *intersectPoints.begin();
@@ -526,32 +795,27 @@ bool Shape::lineIntersectsCrackNearest(const Line &toCheck,
 int Shape::lineIntersectsCrack(const Line &toCheck, 
                                vector<Crack*> *intersectCracks, 
                                vector<Point>  *intersectPoints,
-                               Crack *crackToIgnore) const
+                               const Crack *crackToIgnore) const
 {
-    vector<Line*>::const_iterator l;
     vector<Crack*>::const_iterator c;
     Crack *intersectCrack = NULL;
     int numIntersects = 0;
-    Point *intersect = new Point();
-    for (l = lines.begin(); l != lines.end(); ++l)
+    Point intersect;
+    for (c = cracks.begin(); c != cracks.end(); ++c)
     {
-        for (c = (*l)->cracks.begin(); c != (*l)->cracks.end(); ++c)
+        if ((*c) == crackToIgnore)
         {
-            if ((*c) == crackToIgnore)
-            {
-                continue;
-            }
-            if ((*c)->lineIntersects(toCheck, intersect, &intersectCrack))
-            {
-                intersectCracks->push_back(intersectCrack);
-                intersectPoints->push_back(*intersect);
-
-                numIntersects++;
-                intersect = new Point();
-            }
+            continue;
+        }
+        if ((*c)->lineIntersects(toCheck, &intersect, &intersectCrack))
+        {
+            intersectCracks->push_back(intersectCrack);
+            intersectPoints->push_back(intersect);
+            
+            numIntersects++;
         }
     }
-    delete intersect;
+    
     return numIntersects;
 }
 
@@ -652,15 +916,19 @@ int Shape::rayTrace(Line &ray)
 }
 
 //the crack should be destroyed after a split
-void Shape::split(vector<Line*> &splitLines)
+void Shape::split(const vector<Line*> &splitLines, 
+                  const vector<Crack*> &splitCracks)
 {
     //new new plan:
     //split the shape by lines, create two new shapes from them.
     //split startLine, split endLine, then throw the lines into shapes.
 
+    //STUPID DEBUGGING
+    
+
     //endLine splits intersectPoint->point2.
     vector<Line*> lines1, lines2;
-    vector<Line*>::iterator l;
+    vector<Line*>::const_iterator l;
     vector<Crack*>::iterator c;
     
     Point crackStartPoint, crackEndPoint;
@@ -696,13 +964,14 @@ void Shape::split(vector<Line*> &splitLines)
     //copy splitLines
     vector<Line*> splitLinesCopy1;
     vector<Line*> splitLinesCopy2;
-#if 0
+#if 1
     for (l = splitLines.begin(); l != splitLines.end(); ++l)
     {
         splitLinesCopy1.push_back(new Line(**l));
         splitLinesCopy2.push_back(new Line(**l));
     }
 #endif
+/*
     //but only copy the lines properly. Copy the cracks as pointers.
     for (l = splitLines.begin(); l != splitLines.end(); ++l)
     {
@@ -717,7 +986,7 @@ void Shape::split(vector<Line*> &splitLines)
             splitLinesCopy2.back()->cracks.push_back(*c);
         }
     }
-    
+*/  
     appendLines(&lines1, splitLinesCopy1);
     appendLines(&lines2, splitLinesCopy2);
     
@@ -729,8 +998,13 @@ void Shape::split(vector<Line*> &splitLines)
     //reassign the lines in this shape to be those of lines2.
     this->lines.clear();
     this->lines.assign(lines2.begin(), lines2.end());
+    calculateCenter();
+
+    vector<Crack*> outsideCracks;
+    getCracksOutside(&outsideCracks);
+    addCracks(splitCracks);
     removeCracksOutside();
-    
+
     if (!sanityCheck())
     {
         debugDraw();
@@ -739,7 +1013,12 @@ void Shape::split(vector<Line*> &splitLines)
 
     /* Create a new shape (using lines1) */
     Shape *newShape = new Shape(lines1, this->toDraw);
+    newShape->copyBounds(*this);
+    newShape->calculateCenter();
+    newShape->addCracks(splitCracks);
+    newShape->addCracks(outsideCracks);
     newShape->removeCracksOutside();
+
     if (!newShape->sanityCheck())
     {
         newShape->debugDraw();
@@ -758,23 +1037,52 @@ void Shape::split(vector<Line*> &splitLines)
     //newShape->setSpeed(0.42 + this->speed, newDirection);
     newShape->accelerate(0.42, newDirection);
 
-    //Set all the cracks in the new shape to have their parent be newShape
-    newShape->updateCrackParents();
-    updateCrackParents();
-                     
-
     //TODO: Delete splitlines here! We made two copies
     
     cout << "Finished the split" << endl;
+#ifdef RESEARCH_SAVE_ONE
     save("saves/After_Split.txt");
+#endif
+#ifdef RESEARCH_SAVE_STORY
+    cout << "SAVING" << endl;
+    stringstream streamy;
+    streamy << "story/save" << saveNum << ".txt";  
+    saveShapes(streamy.str(), toDraw);
+    saveNum++;
+#endif
+
 }
 
+/*
 void Shape::updateCrackParents()
 {
     vector<Line*>::iterator l;
     for (l = this->lines.begin(); l != this->lines.end(); ++l)
     {
         (*l)->setCrackParents(this);
+    }
+}
+*/
+
+void Shape::addCracks(const std::vector<Crack*> &cracksToAdd)
+{
+    vector<Crack*>::const_iterator c;
+    for (c = cracksToAdd.begin(); c != cracksToAdd.end(); ++c)
+    {
+        cracks.push_back(*c);
+    }
+}
+
+void Shape::deleteCrack(Crack *toDelete)
+{
+    vector<Crack*>::iterator c;
+    for (c = cracks.begin(); c != cracks.end(); ++c)
+    {
+        if (toDelete == *c)
+        {
+            cracks.erase(c);
+            return;
+        }
     }
 }
 
@@ -788,6 +1096,12 @@ void Shape::grabShapeLines(Point startPoint, Point endPoint,
       either split it or not.
       -if split, edit shape to have both pieces.
     */
+#if 0
+    startPoint.print();
+    startPoint.drawCircle(3);
+    JDL::flush();
+    JDL::sleep(5);
+#endif
     vector<Line*>::iterator l;
     //should break before reaching lines.end().
     for (l = lines.begin(); l != lines.end(); ++l)
@@ -951,17 +1265,41 @@ void Shape::accelerate(double acceleration, double degrees)
     cout << "New Speed: " << this->speed << endl;
 }
 
+void Shape::calculateCenter()
+{
+    vector<Line*>::iterator l;
+    double xTotal = 0;
+    double yTotal = 0;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        xTotal += (*l)->point2.x;
+        yTotal += (*l)->point2.y;
+    }
+    center.x = xTotal/lines.size();
+    center.y = yTotal/lines.size();
+    estRadius = 0;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        Line dist(center, (*l)->point2);
+        if (dist.length() > estRadius)
+        {
+            estRadius = dist.length();
+        }
+    }
+}
+
 //return true if the shape is closed, return false otherwise.
 //TODO: this is a quick sanity check. Figure 8s won't be checked.
 bool Shape::sanityCheck()
 {
     vector<Line*>::iterator l;
+    /*
     vector<Crack*>::iterator c;
     for (l = lines.begin(); l != lines.end(); ++l)
     {
         (*l)->sanityCheck(this);
     }
-
+    */
     if (lines.size() == 0) return true; //empty shapes are fine
     if (lines.size() == 1) //This should be a point
     {
@@ -1026,25 +1364,33 @@ void Shape::debugDraw()
     debugDraw();
 }
 
+void Shape::getCracksOutside(vector<Crack*> *toFill)
+{
+    vector<Crack*>::iterator c;
+    for (c = cracks.begin(); c != cracks.end(); ++c)
+    {
+        if (!inside((*c)->point2))
+        {
+            toFill->push_back(*c);
+        }
+    }
+}
+
 void Shape::removeCracksOutside()
 {
-    vector<Line*>::iterator l;
     vector<Crack*>::iterator c;
     
-    for (l = lines.begin(); l != lines.end(); ++l)
+    c = cracks.begin();
+    while (c != cracks.end())
     {
-        c = (*l)->cracks.begin();
-        while (c != (*l)->cracks.end())
+        //if ((rayTrace(*(*c)->getFirstLine()) % 2) == 0) //if even, erase
+        if (!inside((*c)->point2))
         {
-            //if (!inside((*c)->getFirstLine()->point2))
-            if ((rayTrace(*(*c)->getFirstLine()) % 2) == 0) //if even, erase
-            {
-                c = (*l)->cracks.erase(c);
-            }
-            else
-            {
-                ++c;
-            }
+            c = cracks.erase(c);
+        }
+        else
+        {
+            ++c;
         }
     }
 }
@@ -1056,7 +1402,7 @@ bool Shape::inside(Point toTest)
     return (rayResult % 2); //if odd, inside, if even, outside.
 }
 
-
+/*
 string Shape::generateJSON()
 {
     string toReturn;
@@ -1074,6 +1420,61 @@ string Shape::generateJSON()
         }
     }
     toReturn += "]";
+    return toReturn;
+}
+*/
+
+string Shape::generateJSON() const
+{
+    string toReturn;
+    toReturn = "{\"lines\":[";
+    vector<Line*>::const_iterator l;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        toReturn += (*l)->generateJSON();
+        if (l + 1 != lines.end())
+        {
+            toReturn += ",";
+        }
+    }
+    toReturn += "]";
+    toReturn += ",\"cracks\":[";
+    vector<Crack*>::const_iterator c;
+    for (c = cracks.begin(); c != cracks.end(); ++c)
+    {
+        toReturn += (*c)->generateJSON();
+        if (c + 1 != cracks.end())
+        {
+            toReturn += ",";
+        }
+    }
+    toReturn += "]";
+    stringstream streamy;
+    streamy << ",\"speed\":" << speed
+            << ",\"direction\":" << direction
+            << ",\"xMinBound\":" << xMinBound
+            << ",\"xMaxBound\":" << xMaxBound
+            << ",\"yMinBound\":" << yMinBound
+            << ",\"yMaxBound\":" << yMaxBound;
+        
+    streamy << ",\"bound\":";
+    switch (this->bound)
+    {
+    case SHAPE_BOUND_NONE:
+        streamy << "none";
+        break;
+    case SHAPE_BOUND_BOUNCE:
+        streamy << "bounce";
+        break;
+    case SHAPE_BOUND_DESTROY:
+        streamy << "destroy";
+        break;
+    case SHAPE_BOUND_WRAP:
+        streamy << "wrap";
+        break;
+    }
+    toReturn += streamy.str();
+    toReturn += "}";
     return toReturn;
 }
 
@@ -1126,125 +1527,103 @@ void loadLines(string fileName, vector<Line*> *toFill)
     */
 }
 
+Shape *loadShape(string filename, vector<Shape*> *toDraw)
+{
+    ifstream inFile(filename.c_str());
+    string jsonString;
+    getline(inFile, jsonString);
+   
+    return new Shape(jsonString, toDraw);
+}
+
+void loadShapes(string filename, vector<Shape*> *toDraw)
+{
+    ifstream inFile(filename.c_str());
+    string jsonString;
+    getline(inFile, jsonString);
+    vector<string> shapeJsons;
+    parseJsonList(&jsonString, &shapeJsons);
+    vector<string>::iterator i;
+    for (i = shapeJsons.begin(); i != shapeJsons.end(); ++i)
+    {
+        toDraw->push_back(new Shape(*i, toDraw));
+    }
+}
+
+void saveShapes(string filename, vector<Shape*> *toDraw)
+{
+    string toSave;
+    vector<Shape*>::iterator s;
+    toSave = "[";
+    for (s = toDraw->begin(); s != toDraw->end(); ++s)
+    {
+        toSave += (*s)->generateJSON();
+        if (s + 1 != toDraw->end())
+        {
+            toSave += ",";
+        }
+    }
+    toSave += "]";
+    ofstream outFile(filename.c_str());
+    outFile << toSave;
+    outFile.close();
+}
+
 int Shape::saveNum = 0;
 
-//destroys original list
-//expects every item in the list to be surrounded by {}
-void parseJsonList(string *jsonString, vector<string> *toFill)
+Shape *Shape::getShapeWithCrack(Crack *crackToCheck)
 {
-    if (jsonString->at(0) != '[')
+    vector<Crack*>::iterator c;
+    vector<Shape*>::iterator s;
+    for (s = toDraw->begin(); s != toDraw->end(); ++s)
     {
-        cerr << "Invalid JSON passed to parseJsonList" << endl;
-        return;
-    }
-    jsonString->erase(0, 1); //erase the [
-
-    while (jsonString->at(0) != ']')
-    {
-        if (jsonString->at(0) == ',')
+        for (c = (*s)->cracks.begin(); c != (*s)->cracks.end(); ++s)
         {
-            jsonString->erase(0, 1);
-        }
-        toFill->push_back(grabJsonObject(jsonString));
-        //cout << toFill->back() << endl;
-    }
-    jsonString->erase(0, 1); //erase the ]
-}
-
-//object must be surrounded by {} or []
-string grabJsonObject(string *jsonString)
-{
-    if ((jsonString->at(0) != '{') && (jsonString->at(0) != '['))
-    {
-        cerr << "Invalid JSON passed to grabJsonObject!" << endl;
-        return *jsonString;
-    }
-    int levelsDown = 0;
-    string toReturn;
-    do 
-    {
-        toReturn.push_back(jsonString->at(0));
-        if ((jsonString->at(0) == '}') || (jsonString->at(0) == ']'))
-        {
-            levelsDown--;
-        }
-        else if ((jsonString->at(0) == '{') || (jsonString->at(0) == '['))
-        {
-            levelsDown++;
-        }
-        jsonString->erase(0, 1);
-    } while (levelsDown > 0);
-    return toReturn;
-}
-
-//does NOT modify jsonString
-//returns "" if it cannot find the value in the dict
-string grabJsonValue(string jsonString, string value)
-{
-    //scan to find a match
-    unsigned int i, valueIndex;
-    valueIndex = 0;
-    for (i = 0; i < jsonString.length(); i++)
-    {
-        if (jsonString[i] == value[valueIndex])
-        {
-            valueIndex++;
-        }
-        else
-        {
-            valueIndex = 0;
-        }
-        if (valueIndex == value.length())
-        {
-            //found a match!
-            break;
-        }
-    }
-
-    if (valueIndex != value.length())
-    {
-        //could not find that value
-        return "";
-    }
-
-    if ((jsonString[i + 1] != '\"') || (jsonString[i + 2] != ':'))
-    {
-        cerr << "Invalid JSON found in grabJsonValue" << endl;
-        return "";
-    }
-
-    i += 3;
-
-    int levelsDown = 0;
-    string toReturn = "";
-
-    while (true)
-    {
-        if (levelsDown == 0)
-        {
-            if ((jsonString[i] == '}') || (jsonString[i] == ','))
+            if (crackToCheck == *c)
             {
-                break;
+                return *s;
             }
         }
-        if ((jsonString[i] == '{') || (jsonString[i] == '['))
-        {
-            levelsDown++;
-        }
-        else if ((jsonString[i] == '}') || (jsonString[i] == ']'))
-        {
-            levelsDown--;
-        }
-
-        toReturn += jsonString[i];
-        i++;
     }
-    return toReturn;
+    return NULL;
 }
+/*
+//expects that each child it is passed is a point crack.
+//randomly adds another crack (or not) to each child.
+void Shape::splitChildren(vector<Crack*> *children)
+{
+    vector<Crack*> childCopy;
+    childCopy.assign(children->begin(), children->end());
+    
+    children->clear();
+    vector<Crack*>::iterator c;
+    double percentChance = 42;
+    for (c = childCopy.begin(); c != childCopy.end(); ++c)
+    {
+        children->push_back(*c);
+        if (JDL::randDouble(0, 100) < percentChance)
+        {
+            //add a child to the parent of *c
+            Crack *theParent = (*c)->getParentCrack();
+            if (theParent != NULL)
+            {
+                children->push_back(theParent->addChild());
+            }
+            else
+            {
+                Crack *toAdd = new Crack((*c)->point1);
+                cracks.push_back(toAdd);
+                children->push_back(toAdd);
+            }
+        }
+    }
+}
+*/
+
 
 //if children is one (and a point), do nothing.
 //Otherwise, for each child, either create two new points for it or do nothing.
-void splitChildren(std::vector<Crack*> *children)
+void Shape::splitChildren(vector<Crack*> *children)
 {
     if ((*children)[0]->isPoint()) return;
 
@@ -1257,15 +1636,22 @@ void splitChildren(std::vector<Crack*> *children)
 
     for (c = childCopy.begin(); c != childCopy.end(); ++c)
     {
-        if (JDL::randDouble(0, 100) < percentChance)
+        if ((*c)->isShapeSplit())
         {
+            //do nothing, do not add to children; do not increase this crack.
+            cerr << "Ignoring expanding Crack with shapeSplit == true." << endl;
+        }
+        else if (JDL::randDouble(0, 100) < percentChance)
+        {
+            //give it two children
             children->push_back((*c)->addChild());
             children->push_back((*c)->addChild());
         }
         else
         {
-            //do nothing
-            children->push_back(*c);
+            //give it one child
+            children->push_back((*c)->addChild());
         }
     }
 }
+

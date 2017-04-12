@@ -4,39 +4,37 @@
 #include <vector>
 #include <string>
 
-#include "Shape.hpp"
-#include "Crack.hpp"
 #include "Point.hpp"
-
-class Shape;
-class Crack;
 
 //A Line may have many cracks
 class Line
 {
-    friend class Crack;
+    //friend class Crack;
 private:
 
     //void getImpacts(const Point &impactPoint); 
 
 public:
-    std::vector<Crack*> cracks;
-    
     Point point1;
     Point point2;
-    //int index;
+
+    //0 for ignore no end points, 1 for point1, 2 for point2, 3 for both.
+    int ignorePoint;
 
     Line();
     Line(const Line &other);
+    Line(Point thePoint);
     Line(Point point1, Point point2);
     Line(Point point1, double length, double direction);
     Line(std::string jsonString);
 
     //Line(const Line & other);
+    void scale(double factor);
     void move(double distance, double degrees);
     void draw() const;
     void draw(int index) const;
     double length() const;
+    bool isPoint();
 
     void switchPoints();
 
@@ -57,25 +55,17 @@ public:
 
     void split(Point splitPoint, Line *newLine);
 
-    //void createFracture(Point startPoint, Shape *parentShape, double force);
-    //int numImpacts(Point impactPoint); 
-
-    //eventually, use the force to calculate how many new cracks should
-    //be created, if any.
-    //or just never create a new crack; keep to some density.
-    //int increaseCracks(Point impactPoint, Shape *parentShape, double force);
-
-    int getImpactedCracks(Point clickPoint, Shape *parentShape, 
-                           std::vector<Crack*> *impactedCracks);
-    void setCrackParents(Shape *crackParentShape);
+    //int getImpactedCracks(Point clickPoint, Shape *parentShape, 
+    //                       std::vector<Crack*> *impactedCracks);
+    //void setCrackParents(Shape *crackParentShape);
 
     double getDirection() const;
-    int deleteCrack(Crack *toDelete);
-    Crack *addCrack(Point impactPoint, Shape *parentShape);
+    //int deleteCrack(Crack *toDelete);
+    //Crack *addCrack(Point impactPoint, Shape *parentShape);
 
-    std::string generateJSON();
+    std::string generateJSON() const;
 
-    bool sanityCheck(Shape *parentShape);
+    //bool sanityCheck(Shape *parentShape);
 };
 
 void drawLines(std::vector<Line*> toDraw, double secondsToSleep);

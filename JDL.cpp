@@ -14,7 +14,7 @@
 #include "gfx_j.h"
 #endif
 
-const double JDL::PRECISION = 0.0001;
+const double JDL::PRECISION = 0.1;
 
 JDL::JDL()
 {
@@ -72,6 +72,24 @@ double JDL::randDouble(double rangeStart, double rangeEnd)
     toReturn *= (rangeEnd - rangeStart);
     toReturn += rangeStart;
     return toReturn;
+}
+
+double JDL::stringToDouble(std::string toConvert)
+{
+#ifdef JDL_USE_STL
+    return stod(toConvert);
+#else
+    return atof(toConvert.c_str());
+#endif
+}
+
+int JDL::stringToInt(std::string toConvert)
+{
+#ifdef JDL_USE_STD
+    return stoi(toConvert);
+#else
+    return atoi(toConvert.c_str());
+#endif
 }
 
 //return 0 if origin, -1 if x axis, -2 if y axis, or quadrant the point is in
