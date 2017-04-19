@@ -1011,6 +1011,11 @@ void JDL::circle(int x, int y, int r)
     gfx_circle(x, y, r);
 }
 
+void JDL::point(int x, int y)
+{
+    gfx_point(x, y);
+}
+
 //TODO: incompatible, doesn't return width;
 int JDL::text(int x, int y, const char *text)
 {

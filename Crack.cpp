@@ -319,11 +319,18 @@ void Crack::convertToLinesDelete(vector<Line*> *resultVec, Crack *toDelete)
     }
 }
 */
+ //#define CONVERT_TO_LINES_AND_CRACKS_DEBUG
 //NOTE: This is literally suicide. It deletes itself at the end!
 void Crack::convertToLinesAndCracks(vector<Line*> *linesVec, 
                                     vector<Crack*> *cracksVec,
                                     Shape *parentShape)
 {
+#ifdef CONVERT_TO_LINES_AND_CRACKS_DEBUG
+    JDL::setDrawColor(0, 0, 255);
+    draw();
+    JDL::setDrawColor(45, 45, 45);
+    JDL::sleep(1);
+#endif
     //step 1: grab all the cracks from this line and throw them into a vector.
     //also inform them that they are now orphans
     vector<Crack*>::iterator c;
@@ -348,6 +355,10 @@ void Crack::convertToLinesAndCracks(vector<Line*> *linesVec,
                 parentCrack->childCracks.erase(c);
                 break;
             }
+        }
+        if (c == childCracks.end())
+        {
+            cerr << "ERROR: Failed to delete this crack!" << endl;
         }
         
         //step 4: recursion!
@@ -390,12 +401,24 @@ Crack *Crack::splitOffAt(Point splitPoint)
 }
 */
 
+ //Set returned crack's parent to be "oldCrack"; e.g. this
 Crack *Crack::split(Point splitPoint)
 {
-    Line *newLine = new Line();
-    ((Line*) this)->split(splitPoint, newLine);
-    Crack *newCrack = new Crack(*newLine);
-    delete newLine;
+    Line newLine;
+    ((Line*) this)->split(splitPoint, &newLine);
+    Crack *newCrack = new Crack(newLine);
+    
+    //remove all children from this and give them to newCrack
+    vector<Crack*>::iterator c = childCracks.begin();
+    while (c != childCracks.end())
+    {
+        newCrack->childCracks.push_back(*c);
+        (*c)->parentCrack = newCrack;
+        c = childCracks.erase(c);
+    }
+    
+    //set newCrack's parent to be this
+    newCrack->parentCrack = this;
     return newCrack;
 }
 
@@ -480,6 +503,7 @@ bool Crack::lineIntersects(const Line &toCheck)
     return lineIntersects(toCheck, &dummyPoint, &dummyCrack);
 }
 
+//returns childmost intersected crack
 bool Crack::lineIntersects(const Line &toCheck, Point *intersect, 
                            Crack **intersectCrack)
 {

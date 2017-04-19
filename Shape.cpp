@@ -40,6 +40,26 @@ void Shape::init(vector<Shape*> *toDraw)
     this->toDraw = toDraw;
 }
 
+void Shape::build()
+{
+    calculateHitBox();
+    calculateMass();
+}
+
+//NOTE: Just copies the pointers into lines vec. does not call constructor.
+//does call build, though.
+void Shape::updateLines(const vector <Line*> &newLines)
+{
+    //TODO: Actually delete the old lines
+    lines.clear();
+    vector<Line*>::const_iterator l;
+    for (l = newLines.begin(); l != newLines.end(); ++l)
+    {
+        lines.push_back(*l);
+    }
+    build();
+}
+
 Shape::Shape(vector<Point> givenPoints, vector<Shape*> *toDraw)
 {
     init(toDraw);
@@ -60,7 +80,8 @@ Shape::Shape(vector<Point> givenPoints, vector<Shape*> *toDraw)
         }
         addPoint(*next);
     }
-    calculateCenter();
+    //calculateCenter();
+    build();
 }
 
 Shape::Shape(vector<Line*> &givenLines, vector<Shape*> *toDraw)
@@ -72,7 +93,8 @@ Shape::Shape(vector<Line*> &givenLines, vector<Shape*> *toDraw)
     {
         lines.push_back(*l);
     }
-    calculateCenter();
+    //calculateCenter();
+    build();
 }
 
 Shape::Shape(vector<Shape*> *toDraw)
@@ -116,19 +138,19 @@ Shape::Shape(string jsonString, vector<Shape*> *toDraw)
     }
 
     //determine bound type
-    if (boundString == "none")
+    if (boundString == "\"none\"")
     {
         this->bound = SHAPE_BOUND_NONE;
     }
-    else if (boundString == "destroy")
+    else if (boundString == "\"destroy\"")
     {
         this->bound = SHAPE_BOUND_DESTROY;
     }
-    else if (boundString == "bounce")
+    else if (boundString == "\"bounce\"")
     {
         this->bound = SHAPE_BOUND_BOUNCE;
     }
-    else if (boundString == "wrap")
+    else if (boundString == "\"wrap\"")
     {
         this->bound = SHAPE_BOUND_WRAP;
     }
@@ -136,7 +158,8 @@ Shape::Shape(string jsonString, vector<Shape*> *toDraw)
     {
         cerr << "ERROR: Bound type not recognized!" << endl;
     }
-    calculateCenter();
+    //calculateCenter();
+    build();
 }
 
 void Shape::scale(double factor)
@@ -166,6 +189,7 @@ void Shape::scale(double factor)
          (*c)->move(distance, degrees);
      }
      center.move(distance, degrees);
+     boxTopLeft.move(distance, degrees);
  }
 
  void Shape::move()
@@ -179,8 +203,24 @@ void Shape::scale(double factor)
      this->direction = degrees;
  }
 
+double Shape::getSpeed()
+{
+    return speed;
+}
+
+double Shape::getDirection()
+{
+    return direction;
+}
+
  void Shape::draw()
  {
+     /*
+     Line sideLine(boxTopLeft, Point(boxTopLeft.x, boxTopLeft.y + height));
+     Line topLine(boxTopLeft, Point(boxTopLeft.x + width, boxTopLeft.y));
+     sideLine.draw();
+     topLine.draw();
+     */
      center.drawCircle(5);
      vector<Line*>::iterator l;
      for (l = lines.begin(); l != lines.end(); ++l)
@@ -190,27 +230,138 @@ void Shape::scale(double factor)
      vector<Crack*>::iterator c;
      for (c = cracks.begin(); c != cracks.end(); ++c)
      {
+         ((Line*)(*c))->draw(c - cracks.begin());
          (*c)->draw();
      }
  }
 
+bool Shape::hitBoxOverlapsWith(const Shape &other) const
+{
+    if (boxTopLeft.x < (other.boxTopLeft.x + other.width))
+    {
+        if (boxTopLeft.x + width > other.boxTopLeft.x)
+        {
+            if (boxTopLeft.y < (other.boxTopLeft.y + other.height))
+            {
+                if ((boxTopLeft.y + height) > other.boxTopLeft.y)
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+void Shape::collide(Shape *collider)
+{
+    if (collider->ID != lastHit)
+    {
+        double m2;
+        m2 = collider->mass;
+
+        //changes the value of the velocities!
+        double myVelX, myVelY;
+        double collideVelX, collideVelY;
+        myVelX = cos(direction *M_PI/180) * speed;
+        myVelY = sin(direction *M_PI/180) * speed;
+        collideVelX = cos(collider->direction*M_PI/180) * collider->speed;
+        collideVelY = sin(collider->direction*M_PI/180) * collider->speed;
+        collide1D(this->mass, m2, myVelX, collideVelX);
+        collide1D(this->mass, m2, myVelY, collideVelY);
+
+        Line dir(Point(0,0), Point(myVelX, myVelY));
+        direction = dir.getDirection();
+        speed = dir.length();
+
+        Line dir2(Point(0,0), Point(collideVelX, collideVelY));
+        collider->direction = dir2.getDirection();
+        collider->speed = dir2.length();
+
+        lastHit = collider->ID;
+        collider->lastHit = ID;
+        //std::cout << "ball " << myId << " collided with ball " 
+        //          << collider.myId << std::endl;
+    }
+    else
+    {
+        //std::cout << "Skipping collide of ball " << myId 
+        //          << " with ball " << collider.myId << std::endl;
+    }
+}
+	
+//My current (2016) thought is that something is wrong in here
+//for some reason, on some occassions, a collision occurs, but nothing
+//happens; there is no change in velocity.
+//this triggers the lastHit mechanism to let the balls pass through each other.
+void collide1D(double m1, double m2, double &v1i, double &v2i)
+{
+	//helpful constants
+	double c1, c2;
+	c1 = (m1 * v1i) + (m2 * v2i);
+	c2 = (m1 * (v1i * v1i)) + (m2 * (v2i * v2i));
+
+	//std::cout << m1 << " " << m2 << " " << v1i << " " << v2i << std::endl;
+
+	//actual calculation:
+	double a, b, c;
+	a = (m2 * m2) + (m1 * m2);
+	b = -2 * c1 * m2;
+	c = (c1 * c1) - (c2 * m1);
+
+	//quadratic equation:
+	//double double_error = 0;
+	double toRoot = (b*b) - (4 * a*c);
+	if (toRoot < 0)
+	{
+		std::cout << "Imaginary number!" << std::endl;
+	}
+	double v2f = ((-b) + sqrt(toRoot)) / (2 * a);
+	//Ignore the no collision answer:
+	//THIS PART IS FAILING SOMETIMES! (?) //OH!! ONE DIMENSIONAL!
+        double double_error = 0.001;
+	if ((v2f >= v2i - double_error) && (v2f <= v2i + double_error))
+            //if (v2f == v2i)
+	{
+		v2f = ((-b) - sqrt(toRoot)) / (2 * a);
+	}
+
+	//change the values of the parameters!
+	
+	v2i = v2f;
+	v1i = (c1 - (m2*v2f)) / m1;
+
+	if (isnan(v2i) || isnan(v1i))
+	{
+		std::cout << "Found a nan in collision" << std::endl;
+	}
+}
+
+
 void Shape::collide()
 {
-#if 0
     vector<Shape*>::iterator s;
     vector<Line*>::iterator l;
     for (s = toDraw->begin(); s != toDraw->end(); ++s)
     {
         if ((*s) == this) continue;
-        if ((lastHit == (*s)->ID) && ((*s)->lastHit == ID)) continue;
-        if ((*s)->ID == ID) continue;
-        if (center.near((*s)->center, estRadius + (*s)->estRadius))
+        //if ((lastHit == (*s)->ID) && ((*s)->lastHit == ID)) continue;
+        //if ((*s)->ID == ID) continue;
+        if (this->hitBoxOverlapsWith(**s))
         {
             for (l = this->lines.begin(); l != this->lines.end(); ++l)
             {
                 Point crashPoint = (*l)->point1;
                 if ((*s)->inside(crashPoint))
                 {
+                    collide(*s);
+                    /*
+                    if ((rand() %10) == 8)
+                    {
+                        fractureAt(crashPoint);
+                    }
+                    */
+                    /*
                     newestID++;
                     this->ID = newestID;
                     newestID++;
@@ -224,6 +375,7 @@ void Shape::collide()
                     
                     fractureAt(crashPoint);
                     (*s)->fractureAt(crashPoint);
+                    */
                     return;
                 }
             }
@@ -252,7 +404,7 @@ void Shape::collide()
         }
     }
 */
-#endif
+//#endif
 }
 
 void Shape::setBounds(int xMin, int xMax, int yMin, int yMax)
@@ -305,25 +457,30 @@ void Shape::boundBounce()
         //make the shape go right
         if (xMagnitude < 0) xMagnitude = -xMagnitude;
         else cout << "Already going right, skipping" << endl;
+        lastHit = -1;
         break;
     case SHAPE_CORNER_RIGHT:
         //make the shape go left;
         if (xMagnitude > 0) xMagnitude = -xMagnitude;
         else cout << "Already going left, skipping" << endl;
+        lastHit = -2;
         break;
     case SHAPE_CORNER_UP:
         //make the shape go down;
         if (yMagnitude < 0) yMagnitude = -yMagnitude;
         else cout << "Already going down, skipping" << endl;
+        lastHit = -3;
         break;
     case SHAPE_CORNER_DOWN:
         //make the shape go up;
         if (yMagnitude > 0) yMagnitude = -yMagnitude;
         else cout << "Already going up, skipping" << endl;
+        lastHit = -4;
         break;
     case SHAPE_CORNER_BOTH:
         this->speed = -this->speed;
         cout << "Double bounce magic!" << endl;
+        lastHit = -5;
         return;
     case SHAPE_CORNER_NONE:
         return;
@@ -392,7 +549,7 @@ CornerType Shape::cornerOutOfBounds()
      vector<Crack*> splitCracks;
      Point impactPoint;
 
-     double force = 21;
+     double force = 50;
      double radius = 10;
 
      Crack *toIncrease = NULL;
@@ -465,7 +622,8 @@ void Shape::addPoint(Point toAdd)
         lines.back()->point2 = toAdd;
         lines.push_back(new Line(toAdd, lines[0]->point1));
     }
-    calculateCenter();
+    //calculateCenter();
+    build();
 }
 
 /*
@@ -774,17 +932,18 @@ bool Shape::lineIntersectsCrackNearest(const Line &toCheck,
     double minDist = Line(toCheck.point1, *intersectPoints.begin()).length();
     *intersectPoint = *intersectPoints.begin();
     *intersectCrack = *intersectCracks.begin();
-    c = intersectCracks.begin();
-    for (p = intersectPoints.begin(); p != intersectPoints.end(); ++p)
+    c = intersectCracks.begin()+1;
+    for (p = intersectPoints.begin()+1; p != intersectPoints.end(); ++p)
     {
-        c++;
         Line dist(toCheck.point1, *p);
         if (dist.length() < minDist)
         {
             minDist = dist.length();
             *intersectPoint = *p;
             *intersectCrack = *c;
+            cout << "WOO" << endl;
         }
+        c++;
     }
     
     return true;
@@ -996,9 +1155,12 @@ void Shape::split(const vector<Line*> &splitLines,
     */
     /* Modify this shape (using lines2) */
     //reassign the lines in this shape to be those of lines2.
+    /*
     this->lines.clear();
     this->lines.assign(lines2.begin(), lines2.end());
     calculateCenter();
+    */
+    this->updateLines(lines2);
 
     vector<Crack*> outsideCracks;
     getCracksOutside(&outsideCracks);
@@ -1014,7 +1176,7 @@ void Shape::split(const vector<Line*> &splitLines,
     /* Create a new shape (using lines1) */
     Shape *newShape = new Shape(lines1, this->toDraw);
     newShape->copyBounds(*this);
-    newShape->calculateCenter();
+    //newShape->calculateCenter();
     newShape->addCracks(splitCracks);
     newShape->addCracks(outsideCracks);
     newShape->removeCracksOutside();
@@ -1044,7 +1206,7 @@ void Shape::split(const vector<Line*> &splitLines,
     save("saves/After_Split.txt");
 #endif
 #ifdef RESEARCH_SAVE_STORY
-    cout << "SAVING" << endl;
+    cout << "SAVING" << saveNum << endl;
     stringstream streamy;
     streamy << "story/save" << saveNum << ".txt";  
     saveShapes(streamy.str(), toDraw);
@@ -1084,6 +1246,7 @@ void Shape::deleteCrack(Crack *toDelete)
             return;
         }
     }
+    cerr << "ERROR: Failed to delete Crack!" << endl;
 }
 
 //grabs all lines in between startPoint and endPoint
@@ -1265,6 +1428,73 @@ void Shape::accelerate(double acceleration, double degrees)
     cout << "New Speed: " << this->speed << endl;
 }
 
+void Shape::calculateHitBox()
+{
+    if (lines.size() == 0) 
+    {
+        return;
+    }
+    //discover leftmost corner:
+    vector<Line*>::iterator l;
+    double leftmostX = lines.front()->point1.x;
+    double rightmostX = lines.front()->point1.x;
+    double downmostY = lines.front()->point1.y;
+    double upmostY = lines.front()->point1.y;
+    for (l = lines.begin()+1; l != lines.end(); ++l)
+    {
+        if ((*l)->point1.x < leftmostX)
+        {
+            leftmostX = (*l)->point1.x;
+        }
+        if ((*l)->point1.x > rightmostX)
+        {
+            rightmostX = (*l)->point1.x;
+        }
+        if ((*l)->point1.y > downmostY)
+        {
+            downmostY = (*l)->point1.y;
+        }
+        if ((*l)->point1.y < upmostY)
+        {
+            upmostY =  (*l)->point1.y;
+        }
+    }
+    boxTopLeft = Point(leftmostX, upmostY);
+    width = rightmostX - leftmostX;
+    height = downmostY - upmostY;
+}
+
+//assumes that the hitbox is set up already.
+void Shape::calculateMass()
+{
+    int totalX = 0, totalY = 0;
+    int w = 0, h = 0;
+    mass = 0;
+    for (w = boxTopLeft.x; w < boxTopLeft.x + width; w++)
+    {
+        for (h = boxTopLeft.y; h < boxTopLeft.y + height; h++)
+        {
+            if (inside(Point(w, h)))
+            {
+                //cout << w << "," << h << endl;
+                /*
+                JDL::setDrawColor(255, 0, 255);
+                JDL::point(w, h);
+                JDL::setDrawColor(255, 255, 255);
+                */
+                //JDL::circle(w, h, 5);
+                totalX += w;
+                totalY += h;
+                mass += 1;
+            }
+        }
+    }
+    cout << "totalX: " << totalX << ", mass: " << mass << endl;
+    //Note: This trick only works with mass += 1 every time.
+    center = Point(totalX/mass, totalY/mass);
+    center.print();
+}
+/*
 void Shape::calculateCenter()
 {
     vector<Line*>::iterator l;
@@ -1286,7 +1516,7 @@ void Shape::calculateCenter()
             estRadius = dist.length();
         }
     }
-}
+    }*/
 
 //return true if the shape is closed, return false otherwise.
 //TODO: this is a quick sanity check. Figure 8s won't be checked.
@@ -1383,8 +1613,8 @@ void Shape::removeCracksOutside()
     c = cracks.begin();
     while (c != cracks.end())
     {
-        //if ((rayTrace(*(*c)->getFirstLine()) % 2) == 0) //if even, erase
-        if (!inside((*c)->point2))
+        if ((rayTrace(*(Line*)*c) % 2) == 0) //if even, erase
+            //if (!inside((*c)->point2))
         {
             c = cracks.erase(c);
         }
@@ -1461,16 +1691,16 @@ string Shape::generateJSON() const
     switch (this->bound)
     {
     case SHAPE_BOUND_NONE:
-        streamy << "none";
+        streamy << "\"none\"";
         break;
     case SHAPE_BOUND_BOUNCE:
-        streamy << "bounce";
+        streamy << "\"bounce\"";
         break;
     case SHAPE_BOUND_DESTROY:
-        streamy << "destroy";
+        streamy << "\"destroy\"";
         break;
     case SHAPE_BOUND_WRAP:
-        streamy << "wrap";
+        streamy << "\"wrap\"";
         break;
     }
     toReturn += streamy.str();
@@ -1539,6 +1769,11 @@ Shape *loadShape(string filename, vector<Shape*> *toDraw)
 void loadShapes(string filename, vector<Shape*> *toDraw)
 {
     ifstream inFile(filename.c_str());
+    if (inFile.fail())
+    {
+        cerr << "Invalid file name!" << endl;
+        return;
+    }
     string jsonString;
     getline(inFile, jsonString);
     vector<string> shapeJsons;

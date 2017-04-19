@@ -16,6 +16,12 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
+    const int WIDTH = 800;
+    const int HEIGHT = 800;
+
+    JDL::init(WIDTH, HEIGHT, "Research");
+
+
     vector<Shape*> toDraw;
     vector<Point> points;
     points.push_back(Point(100, 100));
@@ -25,10 +31,6 @@ int main(int argc, char **argv)
     toDraw.back()->setBoundType(SHAPE_BOUND_BOUNCE);
     toDraw.back()->setBounds(0, 800, 0, 800);
 
-    const int WIDTH = 800;
-    const int HEIGHT = 800;
-
-    JDL::init(WIDTH, HEIGHT, "Research");
     vector<Shape*>::iterator i;
     vector<Point> newPoints;
     char input;
@@ -37,8 +39,9 @@ int main(int argc, char **argv)
 
 
     Launcher launchy(&toDraw);
-    double launchMoveSpeed = 5;
-    double launchMoveDirection = 90;
+    launchy.setVelocity(4, 90);
+    //double launchMoveSpeed = 5;
+    //double launchMoveDirection = 90;
 
     Shape *building = NULL;
     bool quit = false;
@@ -81,8 +84,8 @@ int main(int argc, char **argv)
         {
         case 'n':
             //load story
-            streamy << "story/save" << storyNum << ".txt";
             storyNum++;
+            streamy << "story/save" << storyNum << ".txt";
             toDraw.clear(); //TODO: memory leaks yay
             cout << "trying to load from " << streamy.str() << "." << endl;
             loadShapes(streamy.str(), &toDraw);
@@ -93,7 +96,7 @@ int main(int argc, char **argv)
             streamy << "story/save" << storyNum << ".txt";
 
             toDraw.clear(); //TODO: Memory leaks
-            cout << "trying to load from " << filename << "." << endl;
+            cout << "trying to load from " << streamy.str() << "." << endl;
             loadShapes(streamy.str(), &toDraw);
             break;
         case 'q':
@@ -201,7 +204,7 @@ int main(int argc, char **argv)
                         }
                     }
                 }
-                saveShapes("saves/All_After_Split.txt", &toDraw);
+                //saveShapes("saves/All_After_Split.txt", &toDraw);
                 //cout << "time to draw!" << endl;
                 break;
             }
@@ -211,6 +214,7 @@ int main(int argc, char **argv)
 
     //draw and move shapes
         JDL::clear();
+        /*
         if (launchy.getPosition().y <= 100)
         {
             launchMoveDirection = 90;
@@ -220,7 +224,7 @@ int main(int argc, char **argv)
             launchMoveDirection = -90;
         }
         launchy.move(launchMoveSpeed, launchMoveDirection);
-
+        */
 
         for (i = toDraw.begin(); i != toDraw.end(); ++i)
         {

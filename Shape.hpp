@@ -10,7 +10,7 @@
 
 //#define RESEARCH_SAVE_ALL
 //#define RESEARCH_SAVE_ONE
-#define RESEARCH_SAVE_STORY
+//#define RESEARCH_SAVE_STORY
 
 class Crack;
 
@@ -37,17 +37,27 @@ private:
     //int subID;
     int lastHit;
     static int newestID;
-    Point center;
+    double mass;
     double estRadius;
     
+    //hitbox stuff:
+    Point boxTopLeft;
+    double width;
+    double height;
+
     bool sanityCheck();
-    void calculateCenter();
+    //void calculateCenter();
+    void calculateHitBox();
+    void calculateMass();
     void debugDraw();
     void removeCracksOutside();
     void getCracksOutside(std::vector<Crack*> *toFill);
 
     void boundBounce();
     CornerType checkCorners();
+
+protected:
+    Point center;
 
 public:
     //TODO: Make these private
@@ -57,6 +67,8 @@ public:
     
     void initNull();
     void init(std::vector<Shape*> *toDraw);
+    void updateLines(const std::vector<Line*> &newLines);
+    void build(); //creates new center, hitbox, and mass.
     Shape(std::vector<Shape*> *toDraw);
     Shape(std::vector<Point> givenPoints, std::vector<Shape*> *toDraw);
     Shape(std::vector<Line*> &givenLines, std::vector<Shape*> *toDraw);
@@ -69,9 +81,13 @@ public:
   //void setAcc(double acceleration, double direction); //in pixels per timestep
     void accelerate(double acceleration, double degrees);
     void setVelocity(double speed, double degrees); //in pixels per timestep
+    double getSpeed();
+    double getDirection();
     void move(double distance, double degrees);
     void draw();
+    void collide(Shape *collider);
     void collide();
+    bool hitBoxOverlapsWith(const Shape &other) const;
     void setBounds(int xMin, int xMax, int yMin, int yMax);
     void copyBounds(const Shape &other);
     void setBoundType(BoundType toSet);
@@ -131,5 +147,6 @@ void saveShapes(std::string filename, std::vector<Shape*> *toDraw);
 void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2);
 void loadLines(std::string fileName, std::vector<Line*> *toFill); //DOESNT WORK
 Shape *loadShape(std::string filename, std::vector<Shape*> *toDraw);
+void collide1D(double m1, double m2, double &v1i, double &v2i);
 
 #endif

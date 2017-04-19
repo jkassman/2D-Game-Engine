@@ -77,6 +77,7 @@ void Line::move(double distance, double degrees)
     point2.move(distance, degrees);
 }
 
+//TODO: Lazy
 #ifndef JDL_USE_SDL
 string to_string(int lazy)
 {
@@ -96,10 +97,21 @@ void Line::draw(int index) const
               to_string(index).c_str());
 }
 
+//#define LINE_DEBUG
 void Line::draw() const
 {
     JDL::line(JDL::roundi(point1.x), JDL::roundi(point1.y),
               JDL::roundi(point2.x), JDL::roundi(point2.y));
+#ifdef LINE_DEBUG
+    double dx = point2.x - point1.x;
+    double dy = point2.y - point1.y;
+    JDL::text(JDL::roundi(point1.x + dx/4), 
+              JDL::roundi(point1.y + dy/4), 
+              "1");
+    JDL::text(JDL::roundi(point1.x + 3*dx/4), 
+              JDL::roundi(point1.y + 3*dy/4), 
+              "2");
+#endif
 }
 
 double Line::length() const

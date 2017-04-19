@@ -7,7 +7,6 @@ class Launcher : public Shape
 {
 private:
     std::vector<Shape*> *toDraw;
-    Point center;
     int width;
     int height;
 public:
@@ -15,7 +14,6 @@ public:
     
     Point getPosition();
     void fire();
-    void move(double distance, double direction);
     void createProjectileLines(Point center, int numSides, 
                                int sideSize, std::vector<Line*> *toFill);
 };

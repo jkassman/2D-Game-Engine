@@ -17,8 +17,6 @@ Launcher::Launcher(vector<Shape*> *toDraw) : Shape(toDraw)
     setBounds(0, 800, 0, 800);
     setBoundType(SHAPE_BOUND_BOUNCE);
 
-    center = Point(width/2, height/2);
-
     move(600, 0);
     move(100, 90);
     this->toDraw = toDraw;
@@ -44,12 +42,6 @@ void Launcher::fire()
     
     cout << "ATTACK" << endl;
     toDraw->push_back(projectile);
-}
-
-void Launcher::move(double distance, double direction)
-{
-    center.move(distance, direction);
-    ((Shape*) this)->move(distance, direction);
 }
 
 void Launcher::createProjectileLines(Point center, int numSides, int sideSize,
