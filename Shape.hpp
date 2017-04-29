@@ -4,13 +4,15 @@
 #include "Crack.hpp"
 #include "Line.hpp"
 #include "gfx_j.h"
+#include "IEMath.h"
 
 #include <vector>
 #include <string>
 
 //#define RESEARCH_SAVE_ALL
 //#define RESEARCH_SAVE_ONE
-//#define RESEARCH_SAVE_STORY
+#define RESEARCH_SAVE_STORY
+//#define RESEARCH_SAVE_STORY_SHORT
 
 class Crack;
 
@@ -26,8 +28,11 @@ class Shape
 private:
     std::vector<Line*> lines;
     std::vector<Crack*> cracks;
-    double speed;
+
+    double angularVelocity; //in degrees per time step
+    double speed; //pixels per time step
     double direction; //in degrees
+
     BoundType bound;
     int xMinBound;
     int xMaxBound;
@@ -38,6 +43,7 @@ private:
     int lastHit;
     static int newestID;
     double mass;
+    double momentI;
     double estRadius;
     
     //hitbox stuff:
@@ -57,6 +63,7 @@ private:
     CornerType checkCorners();
 
 protected:
+    double orientation; //in degrees
     Point center;
 
 public:
@@ -77,16 +84,23 @@ public:
     bool inside(Point toTest);
     
     void scale(double factor);
-    void move();
   //void setAcc(double acceleration, double direction); //in pixels per timestep
     void accelerate(double acceleration, double degrees);
     void setVelocity(double speed, double degrees); //in pixels per timestep
+    void setAngularVelocity(double angVel);
     double getSpeed();
     double getDirection();
-    void move(double distance, double degrees);
+
+    void move();
+    void translate(double distance, double degrees);
+    void rotate(double theta); //about COM
     void draw();
     void collide(Shape *collider);
-    void collide();
+    bool collide();
+    bool resolveImpulse(Point contactPoint, Shape *B);
+    void ApplyImpulse(const Vec2 &impulse, const Vec2 &contactVector);
+//^^Modified from Copyright (c) 2013 Randy Gaul http://RandyGaul.net
+//(See IEMath.h)
     bool hitBoxOverlapsWith(const Shape &other) const;
     void setBounds(int xMin, int xMax, int yMin, int yMax);
     void copyBounds(const Shape &other);
@@ -99,7 +113,8 @@ public:
     void addPoint(Point toAdd);
     //Line *getLineNearest(const Point clickPoint) const;
     //Crack *addCrack(Point impactPoint);
-    int fractureAt(Point clickPoint);
+    //int fractureAt(Point clickPoint);
+    int fractureAt(Point clickPoint, double force);
     void distributeForce(Point impactPoint, double force, double radius,
                          std::vector<int> *forces,
                          std::vector<Point> *hitPoints) const;
@@ -107,6 +122,7 @@ public:
     bool tryOneSplit();
     void split (const std::vector<Line*> &splitLines, 
                 const std::vector<Crack*> &crackLines);
+    void saveStory();
 
     void addCracks(const std::vector<Crack*> &cracksToAdd);
     void deleteCrack(Crack *toDelete);

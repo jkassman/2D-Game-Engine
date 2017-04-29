@@ -206,6 +206,18 @@ void Crack::getGrandestChildren(vector <Crack*> *grandChildren)
     }
 }
 
+void Crack::getAllExceptGrandestChildren(vector<Crack*> *parents)
+{
+    if (childCracks.size() == 0) return;
+    
+    parents->push_back(this);
+    vector<Crack*>::iterator c;
+    for (c = childCracks.begin(); c != childCracks.end(); ++c)
+    {
+        (*c)->getAllExceptGrandestChildren(parents);
+    }
+}
+
 void Crack::scale(double factor)
 {
     ((Line*) this)->scale(factor);
@@ -216,14 +228,24 @@ void Crack::scale(double factor)
     }
 }
 
-void Crack::move(double distance, double degrees)
+void Crack::translate(double distance, double degrees)
 {
-    ((Line*) this)->move(distance, degrees);
+    ((Line*) this)->translate(distance, degrees);
 
     vector<Crack*>::iterator c;
     for (c = childCracks.begin(); c != childCracks.end(); ++c)
     {
-        (*c)->move(distance, degrees);
+        (*c)->translate(distance, degrees);
+    }
+}
+
+void Crack::rotateAbout(double theta, Point about)
+{
+    ((Line*) this)->rotateAbout(theta, about);
+    vector<Crack*>::iterator c;
+    for (c = childCracks.begin(); c != childCracks.end(); ++c)
+    {
+        (*c)->rotateAbout(theta, about);
     }
 }
 

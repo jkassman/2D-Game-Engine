@@ -30,7 +30,8 @@ public:
 
     //Line(const Line & other);
     void scale(double factor);
-    void move(double distance, double degrees);
+    void translate(double distance, double degrees);
+    void rotateAbout(double theta, Point about);
     void draw() const;
     void draw(int index) const;
     double length() const;

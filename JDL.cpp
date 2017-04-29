@@ -74,6 +74,26 @@ double JDL::randDouble(double rangeStart, double rangeEnd)
     return toReturn;
 }
 
+bool JDL::percentChance(double chance)
+{
+    if (chance < 0) 
+    {
+        std::cerr << "Negative percent given to percentChance! Always False!" 
+                  << std::endl;
+        return false;
+    }
+    if (chance > 100)
+    {
+        std::cerr << "chance over 100 given to percentChance! Always True!"
+                  << std::endl;
+        return true;
+    }
+    
+    double random = randDouble(0, 100);
+    if (random < chance) return true;
+    return false;
+}
+
 double JDL::stringToDouble(std::string toConvert)
 {
 #ifdef JDL_USE_STL

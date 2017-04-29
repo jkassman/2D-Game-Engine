@@ -30,6 +30,7 @@ int main(int argc, char **argv)
     toDraw.push_back(new Shape(points, &toDraw));
     toDraw.back()->setBoundType(SHAPE_BOUND_BOUNCE);
     toDraw.back()->setBounds(0, 800, 0, 800);
+    toDraw.back()->setAngularVelocity(0);
 
     vector<Shape*>::iterator i;
     vector<Point> newPoints;
@@ -37,6 +38,7 @@ int main(int argc, char **argv)
     int x, y;
     int mode = 0;
 
+    bool splitOccurred = false;
 
     Launcher launchy(&toDraw);
     launchy.setVelocity(4, 90);
@@ -52,8 +54,97 @@ int main(int argc, char **argv)
     srand(time(NULL));
 #endif
     int storyNum = 0;
+    bool stop = false;
+    string filename;
+        
     while (!quit)
     {
+        double moveDist = 50;
+        vector<Shape*>::iterator s;
+
+        if (stop)
+        {
+            char next = gfx_wait();
+            stringstream streamy;
+            switch(next)
+            {
+            case 'n':
+                //load story
+                storyNum++;
+                streamy << "story/save" << storyNum << ".txt";
+                toDraw.clear(); //TODO: memory leaks yay
+                cout << "trying to load from " << streamy.str() << "." << endl;
+                loadShapes(streamy.str(), &toDraw);
+                streamy.clear();
+                break;
+            case 'p':
+                //load previous story
+                storyNum--;
+                streamy << "story/save" << storyNum << ".txt";
+
+                toDraw.clear(); //TODO: Memory leaks
+                cout << "trying to load from " << streamy.str() << "." << endl;
+                loadShapes(streamy.str(), &toDraw);
+                streamy.clear();
+                break;
+            case '=':
+                //zoom in
+                for (s = toDraw.begin(); s != toDraw.end(); ++s)
+                {
+                    (*s)->scale(2);
+                }
+                break;
+            case '-':
+                //zoom out
+                for (s = toDraw.begin(); s != toDraw.end(); ++s)
+                {
+                    (*s)->scale(0.5);
+                }
+                break;
+            case '1':
+                //move left
+                for (s = toDraw.begin(); s != toDraw.end(); ++s)
+                {
+                    (*s)->translate(moveDist, 180);
+                }
+                break;
+
+            case '2':
+                //move right
+                for (s = toDraw.begin(); s != toDraw.end(); ++s)
+                {
+                    (*s)->translate(moveDist, 0);
+                }
+                break;
+            case '3':
+                //move down
+                for (s = toDraw.begin(); s != toDraw.end(); ++s)
+                {
+                    (*s)->translate(moveDist, 90);
+                }
+                break;
+            case '4':
+                //move up
+                for (s = toDraw.begin(); s != toDraw.end(); ++s)
+                {
+                    (*s)->translate(moveDist, -90);
+                }
+                break;
+            case 's':
+                stop = false;
+                break;
+            default:
+                stop = true;
+                break;
+            }
+            JDL::clear();
+            for (s = toDraw.begin(); s != toDraw.end(); ++s)
+            {
+                (*s)->draw();
+            }
+            JDL::flush();
+            if (stop) continue;
+        }
     //get input
         /*
         if (first)
@@ -76,29 +167,8 @@ int main(int argc, char **argv)
         }
 
     //interpret input
-        double moveDist = 50;
-        vector<Shape*>::iterator s;
-        string filename;
-        stringstream streamy;
         switch (input)
         {
-        case 'n':
-            //load story
-            storyNum++;
-            streamy << "story/save" << storyNum << ".txt";
-            toDraw.clear(); //TODO: memory leaks yay
-            cout << "trying to load from " << streamy.str() << "." << endl;
-            loadShapes(streamy.str(), &toDraw);
-            break;
-        case 'p':
-            //load previous story
-            storyNum--;
-            streamy << "story/save" << storyNum << ".txt";
-
-            toDraw.clear(); //TODO: Memory leaks
-            cout << "trying to load from " << streamy.str() << "." << endl;
-            loadShapes(streamy.str(), &toDraw);
-            break;
         case 'q':
             quit = true;
             break;
@@ -117,53 +187,13 @@ int main(int argc, char **argv)
             break;
         case 's':
             //stop everything
+            /*
             for (s = toDraw.begin(); s != toDraw.end(); ++s)
             {
                 (*s)->setVelocity(0, 0);
             }
-            break;
-        case '=':
-            //zoom in
-            for (s = toDraw.begin(); s != toDraw.end(); ++s)
-            {
-                (*s)->scale(2);
-            }
-            break;
-        case '-':
-            //zoom out
-            for (s = toDraw.begin(); s != toDraw.end(); ++s)
-            {
-                (*s)->scale(0.5);
-            }
-            break;
-        case '1':
-            //move left
-            for (s = toDraw.begin(); s != toDraw.end(); ++s)
-            {
-                (*s)->move(moveDist, 180);
-            }
-            break;
-
-        case '2':
-            //move right
-            for (s = toDraw.begin(); s != toDraw.end(); ++s)
-            {
-                (*s)->move(moveDist, 0);
-            }
-            break;
-        case '3':
-            //move down
-            for (s = toDraw.begin(); s != toDraw.end(); ++s)
-            {
-                (*s)->move(moveDist, 90);
-            }
-            break;
-        case '4':
-            //move up
-            for (s = toDraw.begin(); s != toDraw.end(); ++s)
-            {
-                (*s)->move(moveDist, -90);
-            }
+            */
+            stop = true;
             break;
         case 'o':
             toDraw.clear(); //TODO: memory leaks yay
@@ -185,13 +215,20 @@ int main(int argc, char **argv)
                 toDrawSize = toDraw.size();
                 for (j = 0; j < toDrawSize; j++)
                 {
-                    if (toDraw[j]->fractureAt(Point(x,y)))
+                    if (toDraw[j]->fractureAt(Point(x,y), 25))
                     {
                         break;
                     }
                 }
                 //TODO: This is going to be hacky
-                bool splitOccurred = true;
+                splitOccurred = true;
+#ifdef RESEARCH_SAVE_STORY_SHORT
+                if (splitOccurred)
+                {
+                    toDraw[0]->saveStory();
+                }
+#endif
+
                 while (splitOccurred)
                 {
                     splitOccurred = false;
@@ -204,6 +241,7 @@ int main(int argc, char **argv)
                         }
                     }
                 }
+               
                 //saveShapes("saves/All_After_Split.txt", &toDraw);
                 //cout << "time to draw!" << endl;
                 break;
@@ -225,14 +263,14 @@ int main(int argc, char **argv)
         }
         launchy.move(launchMoveSpeed, launchMoveDirection);
         */
-
         for (i = toDraw.begin(); i != toDraw.end(); ++i)
         {
             (*i)->move();
             (*i)->checkBounds();
-            (*i)->collide();
+            if ((*i)->collide()) splitOccurred = true;
             (*i)->draw();
         }
+        
         JDL::flush();
         JDL::sleep(.03);
     }

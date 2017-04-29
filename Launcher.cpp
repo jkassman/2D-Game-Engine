@@ -17,10 +17,10 @@ Launcher::Launcher(vector<Shape*> *toDraw) : Shape(toDraw)
     setBounds(0, 800, 0, 800);
     setBoundType(SHAPE_BOUND_BOUNCE);
 
-    move(600, 0);
-    move(100, 90);
+    translate(600, 0);
+    translate(100, 90);
     this->toDraw = toDraw;
-
+    orientation = 180;
     toDraw->push_back((Shape*) this);
 }
 
@@ -32,23 +32,25 @@ Point Launcher::getPosition()
 void Launcher::fire()
 {
     vector<Line*> projectileLines;
-    createProjectileLines(Point(center.x - width/2, center.y), 10, 10,
+    
+    Line distLine(center, width/2 + 20, orientation);
+    createProjectileLines(distLine.point2, 5, 20,
                           &projectileLines);
     Shape *projectile = new Shape(projectileLines, toDraw);
     projectile->setBounds(0, 800, 0, 800);
     projectile->setBoundType(SHAPE_BOUND_BOUNCE);
-    projectile->setVelocity(10, 180);
+    projectile->setVelocity(10, orientation);
     projectile->projectile = true;
     
     cout << "ATTACK" << endl;
     toDraw->push_back(projectile);
 }
 
-void Launcher::createProjectileLines(Point center, int numSides, int sideSize,
-                                     vector<Line*> *toFill)
+void Launcher::createProjectileLines(Point startPoint, int numSides, 
+                                     int sideSize, vector<Line*> *toFill)
 {
     int i;
-    Point startPoint(center.x - width/2, center.y - sideSize/2);
+    //Point startPoint(center.x - width/2, center.y - sideSize/2);
     toFill->push_back(new Line(startPoint, sideSize, 0));
     for (i = 1; i < numSides; i++)
     {

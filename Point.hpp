@@ -23,7 +23,8 @@ public:
     bool operator<(const Point &other) const;
 
     bool near(const Point &other, double radius);
-    void move(double distance, double degrees);
+    void translate(double distance, double degrees);
+    void rotateAbout(double theta, Point about);
 
     void drawCircle(int radius) const;
 

@@ -108,10 +108,26 @@ bool Point::near(const Point &other, double radius)
     return (dist.length() < radius);
 }
 
-void Point::move(double distance, double degrees)
+void Point::translate(double distance, double degrees)
 {
     x += cos(degrees/180*M_PI)*distance;
     y += sin(degrees/180*M_PI)*distance;
+}
+
+void Point::rotateAbout(double theta, Point about)
+{
+    double radianTheta = theta *M_PI/180;
+    double newX, newY;
+    if (isnan(about.x) || isnan(about.y))
+    {
+        return;
+    }
+    x = x - about.x;
+    y = y - about.y;
+    newX = (x * cos(radianTheta)) - (y * sin(radianTheta));
+    newY = (y * cos(radianTheta)) + (x * sin(radianTheta));
+    x = newX + about.x;
+    y = newY + about.y;
 }
 
 void Point::drawCircle(int radius) const

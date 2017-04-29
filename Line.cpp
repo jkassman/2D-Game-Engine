@@ -71,10 +71,16 @@ void Line::scale(double factor)
     point2.y *= factor;
 }
 
-void Line::move(double distance, double degrees)
+void Line::translate(double distance, double degrees)
 {
-    point1.move(distance, degrees);
-    point2.move(distance, degrees);
+    point1.translate(distance, degrees);
+    point2.translate(distance, degrees);
+}
+
+void Line::rotateAbout(double theta, Point about)
+{
+    point1.rotateAbout(theta, about);
+    point2.rotateAbout(theta, about);
 }
 
 //TODO: Lazy

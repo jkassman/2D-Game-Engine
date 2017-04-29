@@ -63,6 +63,7 @@ public:
     static int roundi(double toRound);
     static bool doublesEqual(double d1, double d2);
     static double randDouble(double rangeStart, double rangeEnd);
+    static bool percentChance(double chance);
     static double stringToDouble(std::string toConvert);
     static int stringToInt(std::string toConvert);
     //static string intToString(std::string toConvert);

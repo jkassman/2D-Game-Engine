@@ -24,6 +24,7 @@ public:
     //force is a measure of how much the crack should increase in length
     void expand(double force, Shape *parentShape);
     void getGrandestChildren(std::vector<Crack*> *grandChildren);
+    void getAllExceptGrandestChildren(std::vector<Crack*> *parents);
 
     Crack* addChild(); //adds a crack that is a point
 
@@ -35,7 +36,8 @@ public:
     Point startPoint();
 
     void scale(double factor);
-    void move(double distance, double degrees);
+    void translate(double distance, double degrees);
+    void rotateAbout(double theta, Point about);
     void draw() const;
 
     bool isShapeSplit();
