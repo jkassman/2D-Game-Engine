@@ -55,6 +55,7 @@ private:
     //void calculateCenter();
     void calculateHitBox();
     void calculateMass();
+    void calculateMoment();
     void debugDraw();
     void removeCracksOutside();
     void getCracksOutside(std::vector<Crack*> *toFill);
@@ -80,6 +81,7 @@ public:
     Shape(std::vector<Point> givenPoints, std::vector<Shape*> *toDraw);
     Shape(std::vector<Line*> &givenLines, std::vector<Shape*> *toDraw);
     Shape(std::string jsonString, std::vector<Shape*> *toDraw);
+    Shape(const Shape &other);
     //Whether or not the given point is inside this shape
     bool inside(Point toTest);
     

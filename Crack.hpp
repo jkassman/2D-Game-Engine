@@ -31,7 +31,7 @@ public:
     Crack(Point startPoint);
     Crack(const Line &otherLine);
     Crack(std::string jsonString, std::string jsonLine, Crack *parentCrack);
-    Crack(const Crack &other);
+    Crack(const Crack &other, bool deep = false, Crack *parent = NULL);
 
     Point startPoint();
 

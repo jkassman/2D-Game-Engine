@@ -87,14 +87,8 @@ bool Point::operator<(const Point &other) const
     }
     else if (JDL::doublesEqual(x, other.x))
     {
-        if (y < other.y)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        if (JDL::doublesEqual(y, other.y)) return false;
+        else return (y < other.y);
     }
     else
     {

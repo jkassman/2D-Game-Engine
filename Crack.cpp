@@ -45,15 +45,30 @@ Crack::Crack(string jsonString, string jsonLine,
     }
 }
 
-Crack::Crack(const Crack &other) : Line(other)
+//if deep is false, shallow copy
+Crack::Crack(const Crack &other, bool deep, Crack* parent) : Line(other)
 {   
-    this->parentCrack = other.parentCrack;
+    if (deep)
+    {
+        this->parentCrack = parent;
+    }
+    else
+    {
+        this->parentCrack = other.parentCrack;
+    }
     this->shapeSplit = other.shapeSplit;
     
     vector<Crack*>::const_iterator c;
     for (c = other.childCracks.begin(); c != other.childCracks.end(); ++c)
     {
-        childCracks.push_back(new Crack(**c));
+        if (deep)
+        {
+            childCracks.push_back(new Crack(**c, true, this));
+        }
+        else
+        {
+            childCracks.push_back(*c);
+        }
     }
 }
 
