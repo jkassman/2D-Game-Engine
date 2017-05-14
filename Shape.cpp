@@ -16,6 +16,12 @@ using namespace std;
 //corners are 0-3;
 int Shape::newestID = 4;
 
+const double Shape::DENSITY_GRAM_PER_METER_CUBED = 2;
+const double Shape::PIXELS_TO_METERS = 0.01; //every pixel is one centimeter.
+const double Shape::MATERIAL_THICKNESS_2D = 100 / 7 * PIXELS_TO_METERS;
+const double Shape::DENSITY_GRAM_PER_METER_SQUARED = DENSITY_GRAM_PER_METER_CUBED / MATERIAL_THICKNESS_2D;
+const double Shape::DENSITY_KG_PER_METER_SQUARED = DENSITY_GRAM_PER_METER_SQUARED / 1000.0;
+
 void Shape::initNull()
 {
     this->bound = SHAPE_BOUND_NONE;
@@ -29,6 +35,8 @@ void Shape::initNull()
     this->yMinBound = 0;
     this->yMaxBound = 400;
    
+    this->toDelete = false;
+
     this->mass = 0;
     this->momentI = 0;
 
@@ -173,7 +181,6 @@ Shape::Shape(string jsonString, vector<Shape*> *toDraw)
     {
         cerr << "ERROR: Bound type not recognized!" << endl;
     }
-    //calculateCenter();
     build();
 }
 
@@ -190,6 +197,7 @@ Shape::Shape(const Shape &other)
         cracks.push_back(new Crack(**c, true, NULL));
     }
 
+    toDelete = other.toDelete;
     angularVelocity = other.angularVelocity;
     speed = other.speed;
     direction = other.direction;
@@ -203,6 +211,9 @@ Shape::Shape(const Shape &other)
     mass = other.mass;
     momentI = other.momentI;
     estRadius = other.estRadius;
+
+    numPointsInside = other.numPointsInside;
+    ignoreFracture = other.ignoreFracture;
 
     boxTopLeft = other.boxTopLeft;
     width = other.width;
@@ -232,20 +243,20 @@ void Shape::scale(double factor)
     center.y *= factor;
 }
 
- void Shape::translate(double distance, double degrees)
+ void Shape::translate(double distance, double radians)
  {
      vector<Line*>::iterator l;
      for (l = lines.begin(); l != lines.end(); ++l)
      {
-         (*l)->translate(distance, degrees);
+         (*l)->translate(distance, radians);
      }
      vector<Crack*>::iterator c;
      for (c = cracks.begin(); c != cracks.end(); ++c)
      {
-         (*c)->translate(distance, degrees);
+         (*c)->translate(distance, radians);
      }
-     center.translate(distance, degrees);
-     boxTopLeft.translate(distance, degrees);
+     center.translate(distance, radians);
+     boxTopLeft.translate(distance, radians);
  }
 
 void Shape::rotate(double theta)
@@ -264,16 +275,16 @@ void Shape::rotate(double theta)
    
 }
 
- void Shape::move()
+ void Shape::move(double secondsElapsed)
  {
-     translate(speed, direction);
-     rotate(angularVelocity);
+     translate(speed*secondsElapsed, direction);
+     rotate(angularVelocity*secondsElapsed);
  }
 
- void Shape::setVelocity(double speed, double degrees)
+ void Shape::setVelocity(double speed, double radians)
  {
      this->speed = speed;
-     this->direction = degrees;
+     this->direction = radians;
  }
 
 void Shape::setAngularVelocity(double angVel)
@@ -291,16 +302,14 @@ double Shape::getDirection()
     return direction;
 }
 
+double Shape::getMass()
+{
+    return mass;
+}
+
  void Shape::draw()
  {
-     /*
-     Line sideLine(boxTopLeft, Point(boxTopLeft.x, boxTopLeft.y + height));
-     Line topLine(boxTopLeft, Point(boxTopLeft.x + width, boxTopLeft.y));
-     sideLine.draw();
-     topLine.draw();
-     */
      JDL::point(center.x, center.y);
-     //center.drawCircle(5);
      vector<Line*>::iterator l;
      for (l = lines.begin(); l != lines.end(); ++l)
      {
@@ -309,10 +318,21 @@ double Shape::getDirection()
      vector<Crack*>::iterator c;
      for (c = cracks.begin(); c != cracks.end(); ++c)
      {
-         //((Line*)(*c))->draw(c - cracks.begin());
          (*c)->draw();
      }
  }
+
+void Shape::deleteSelfFromToDraw()
+{
+    vector<Shape*>::iterator s;
+    for (s = toDraw->begin(); s != toDraw->end(); ++s)
+    {
+        if (*s == this)
+        {
+            toDraw->erase(s);
+        }
+    }
+}
 
 bool Shape::hitBoxOverlapsWith(const Shape &other) const
 {
@@ -332,326 +352,113 @@ bool Shape::hitBoxOverlapsWith(const Shape &other) const
     return false;
 }
 
-void Shape::collide(Shape *collider)
+void Shape::collide(Shape *b, Point cornerPoint)
 {
-    if (collider->ID != lastHit)
+    Shape *a = this;
+    Point bPoint;
+    if (!b->pointOn(cornerPoint, 30, &bPoint))
     {
-        double m2;
-        m2 = collider->mass;
-
-        //changes the value of the velocities!
-        double myVelX, myVelY;
-        double collideVelX, collideVelY;
-        myVelX = cos(direction *M_PI/180) * speed;
-        myVelY = sin(direction *M_PI/180) * speed;
-        collideVelX = cos(collider->direction*M_PI/180) * collider->speed;
-        collideVelY = sin(collider->direction*M_PI/180) * collider->speed;
-        collide1D(this->mass, m2, myVelX, collideVelX);
-        collide1D(this->mass, m2, myVelY, collideVelY);
-
-        Line dir(Point(0,0), Point(myVelX, myVelY));
-        direction = dir.getDirection();
-        speed = dir.length();
-
-        Line dir2(Point(0,0), Point(collideVelX, collideVelY));
-        collider->direction = dir2.getDirection();
-        collider->speed = dir2.length();
-
-        lastHit = collider->ID;
-        collider->lastHit = ID;
-        //std::cout << "ball " << myId << " collided with ball " 
-        //          << collider.myId << std::endl;
+        cerr << "The impact point was not near enough Shape b!" << endl;
+        return;
     }
-    else
-    {
-        //std::cout << "Skipping collide of ball " << myId 
-        //          << " with ball " << collider.myId << std::endl;
-    }
-}
-	
-//My current (2016) thought is that something is wrong in here
-//for some reason, on some occassions, a collision occurs, but nothing
-//happens; there is no change in velocity.
-//this triggers the lastHit mechanism to let the balls pass through each other.
-void collide1D(double m1, double m2, double &v1i, double &v2i)
-{
-	//helpful constants
-	double c1, c2;
-	c1 = (m1 * v1i) + (m2 * v2i);
-	c2 = (m1 * (v1i * v1i)) + (m2 * (v2i * v2i));
 
-	//std::cout << m1 << " " << m2 << " " << v1i << " " << v2i << std::endl;
+    //Main idea: calculate impulse then use that to calculate other stuff.
+    //Main step 1: calculate Impulse
+    //Substep 1: calculate vab1
+    Line va1Line(Point(0, 0), a->speed *PIXELS_TO_METERS, a->direction);
+    Line vb1Line(Point(0, 0), b->speed *PIXELS_TO_METERS, b->direction);
 
-	//actual calculation:
-	double a, b, c;
-	a = (m2 * m2) + (m1 * m2);
-	b = -2 * c1 * m2;
-	c = (c1 * c1) - (c2 * m1);
+    Vec2 va1(va1Line.point2.x, va1Line.point2.y);
+    Vec2 vb1(vb1Line.point2.x, vb1Line.point2.y);
+    Vec2 rap((cornerPoint.x - a->center.x) * PIXELS_TO_METERS,
+             (cornerPoint.y - a->center.y) * PIXELS_TO_METERS);
+    Vec2 rbp((bPoint.x - b->center.x) * PIXELS_TO_METERS, 
+             (bPoint.y - b->center.y) * PIXELS_TO_METERS);
+    
 
-	//quadratic equation:
-	//double double_error = 0;
-	double toRoot = (b*b) - (4 * a*c);
-	if (toRoot < 0)
-	{
-		std::cout << "Imaginary number!" << std::endl;
-	}
-	double v2f = ((-b) + sqrt(toRoot)) / (2 * a);
-	//Ignore the no collision answer:
-	//THIS PART IS FAILING SOMETIMES! (?) //OH!! ONE DIMENSIONAL!
-        double double_error = 0.001;
-	if ((v2f >= v2i - double_error) && (v2f <= v2i + double_error))
-            //if (v2f == v2i)
-	{
-		v2f = ((-b) - sqrt(toRoot)) / (2 * a);
-	}
+    Vec2 vap1 = va1 + Cross(a->angularVelocity, rap);
+    Vec2 vbp1 = vb1 + Cross(b->angularVelocity, rbp);
 
-	//change the values of the parameters!
-	
-	v2i = v2f;
-	v1i = (c1 - (m2*v2f)) / m1;
+    Vec2 vab1 = vap1 - vbp1;
 
-	if (isnan(v2i) || isnan(v1i))
-	{
-		std::cout << "Found a nan in collision" << std::endl;
-	}
-}
+    //substep 2: calculate n
+    Line normalLine = b->getNormalLine(bPoint);
 
+    Vec2 n(normalLine.point2.x - normalLine.point1.x,
+           normalLine.point2.y - normalLine.point1.y);
+    n.Normalize();
+
+    //substep 3: define elasticity
+    double elasticity = 1;
+
+    //substep 4: Actually calculate impulse
+    double numerator = -(1 + elasticity) * Dot(vab1, n);
+    double denominator = 1.0/a->mass
+                       + 1.0/b->mass
+                       + (Cross(rap, n) * Cross(rap, n))/a->momentI
+                       + (Cross(rbp, n) * Cross(rbp, n))/b->momentI;
+    double impulse = numerator / denominator;
+
+    //main step 2: get va2 and vb2 (final a and b linear velocities)
+    Vec2 va2 = va1 + (impulse * n) / a->mass;
+    Vec2 vb2 = vb1 - (impulse * n) / b->mass;
+
+    //Main step 3: get angular velocities
+    double wa2 = a->angularVelocity + Cross(rap, impulse * n) / a->momentI;
+    double wb2 = b->angularVelocity - Cross(rbp, impulse * n) / b->momentI;
+
+    //Main step 4: change the shapes to reflect the collision
+    Line va2Line(Point(0, 0), Point(va2.x, va2.y));
+    Line vb2Line(Point(0, 0), Point(vb2.x, vb2.y));
+    a->speed = va2Line.length()/PIXELS_TO_METERS;
+    a->direction = va2Line.getDirection();
+
+    b->speed = vb2Line.length()/PIXELS_TO_METERS;
+    b->direction = vb2Line.getDirection();
+
+    a->angularVelocity = wa2;
+    b->angularVelocity = wb2;
+
+    //MAIN THING TODO: UNITS!!!! (speed, mostly)
+}           
 
 bool Shape::collide()
 {
+    if (ignoreFracture > 0) ignoreFracture--;
     vector<Shape*>::iterator s;
     vector<Line*>::iterator l;
+    bool toReturn = false;
     for (s = toDraw->begin(); s != toDraw->end(); ++s)
     {
         if ((*s) == this) continue;
-        //if ((lastHit == (*s)->ID) && ((*s)->lastHit == ID)) continue;
+        if ((lastHit == (*s)->ID) && ((*s)->lastHit == ID)) continue;
         //if ((*s)->ID == ID) continue;
         if (this->hitBoxOverlapsWith(**s))
         {
             for (l = this->lines.begin(); l != this->lines.end(); ++l)
             {
-                Point crashPoint = (*l)->point1;
-                if ((*s)->inside(crashPoint))
+                Point cornerPoint = (*l)->point1;
+                if ((*s)->inside(cornerPoint))
                 {
                     //collide(*s);
-                    if (resolveImpulse(crashPoint, *s))
-                    {
-                        /*
-                        fractureAt(crashPoint, 20);
-                        (*s)->fractureAt(crashPoint, 20);
-                        */
-                        return true;
-                    }
-
-
-/*
-                    if ((rand() %10) == 8)
-                    {
-                        fractureAt(crashPoint);
-                    }
-                    */
-                    /*
-                    newestID++;
-                    this->ID = newestID;
-                    newestID++;
-                    (*s)->ID = newestID;
-                    
+                    collide(*s, cornerPoint);
                     this->lastHit = (*s)->ID;
                     (*s)->lastHit = this->ID;
-
-                    speed = -speed;
-                    (*s)->speed = -(*s)->speed;
-                    
-                    fractureAt(crashPoint);
-                    (*s)->fractureAt(crashPoint);
-                    */
-                    return false;
+                    if (ignoreFracture < 1)
+                    {
+                        this->fractureAt(cornerPoint, 25);
+                        (*s)->fractureAt(cornerPoint, 25);
+                        this->ignoreFracture = 20;
+                        (*s)->ignoreFracture = 20;
+                    }
+                    toReturn = true;
+                    return true;
                 }
             }
         }
     }
-/*
-    if (!projectile) return;
-    
-    for (l = lines.begin(); l != lines.end(); ++l)
-    {
-        //for all other shapes
-        for (s = toDraw->begin(); s != toDraw->end(); ++s)
-        {
-            if (*s == this) continue;
-            if ((*s)->inside((*l)->point1))
-            {
-                Point crashPoint = (*l)->point1;
-                direction += 180;
-                crashPoint.drawCircle(3);
-                //fractureAt(crashPoint);
-                projectile = false;
-                //(*s)->direction = (*s)->direction;
-                (*s)->fractureAt(crashPoint);
-                return;
-            }
-        }
-    }
-*/
-//#endif
-    return false;
+    return toReturn;
 }
-
-#if 1
-//^^Modified from Copyright (c) 2013 Randy Gaul http://RandyGaul.net
-//(See IEMath.h)
-//we're going to assume one contact point, which is probably going to
-//screw everything up...
-//Shape A is this...
-//returns  whether or not Shapes A and B were actually changed.
-bool Shape::resolveImpulse(Point contactPoint, Shape *B)
-{
-    Shape *A = this;
-    Vec2 contact(contactPoint.x, contactPoint.y);
-    Vec2 aCenter(A->center.x, A->center.y);
-    Vec2 bCenter(B->center.x, B->center.y);
-    // Calculate radii from COM to contact
-    Vec2 ra = contact - aCenter;
-    Vec2 rb = contact - bCenter;
-
-    Line aVelLine(Point(0,0), A->speed, A->direction);
-    Vec2 aVelocity(aVelLine.point2.x, aVelLine.point2.y);
-    Line bVelLine(Point(0,0), B->speed, B->direction);
-    Vec2 bVelocity(bVelLine.point2.x, bVelLine.point2.y);
-
-    // Relative velocity
-    Vec2 rv = bVelocity + Cross( B->angularVelocity*M_PI/180.0, rb ) -
-        aVelocity - Cross( A->angularVelocity*M_PI/180.0, ra );
-
-    //get normal
-    Line normalNonUnit(A->center, B->center);
-    Line normalLine(Point(0, 0), 1, normalNonUnit.getDirection());
-    Vec2 normal(normalLine.point2.x, normalLine.point2.y);
-
-    // Relative velocity along the normal
-    real contactVel = Dot( rv, normal );
-
-    // Do not resolve if velocities are separating
-    if(contactVel > 0)
-    {
-        cerr << "Shapes are separating! Skipping" << endl;
-        return false;
-    }
-
-    real raCrossN = Cross( ra, normal );
-    real rbCrossN = Cross( rb, normal );
-    real invMassSum = 1.0/A->mass + 1.0/B->mass 
-        + Sqr( raCrossN ) * 1.0/A->momentI 
-        + Sqr( rbCrossN ) * 1.0/B->momentI;
-
-    // Calculate impulse scalar
-    //TODO: e probably shouldn't be 0
-    double e = 0;
-    real j = -(1.0f + e) * contactVel;
-    j /= invMassSum;
-    //j /= (real)contact_count;
-    
-    // Apply impulse
-    Vec2 impulse = normal * j;
-    A->ApplyImpulse( -impulse, ra );
-    B->ApplyImpulse(  impulse, rb );
-    return true;
-}
-
-void Shape::ApplyImpulse(const Vec2 &impulse, const Vec2 &contactVector)
-{
-    Vec2 velocity = 1.0/mass * impulse;
-    Line velocityLine(Point(0, 0), Point(velocity.x, velocity.y));
-    speed = velocityLine.length();
-    direction = velocityLine.getDirection();
-
-    angularVelocity += 1.0/momentI * Cross( contactVector, impulse ) 
-        * 180.0/M_PI;
-}
-
-#else
-//^^Modified from Copyright (c) 2013 Randy Gaul http://RandyGaul.net
-//(See IEMath.h)
-//we're going to assume one contact point, which is probably going to
-//screw everything up...
-//Shape A is this...
-//returns  whether or not Shapes A and B were actually changed.
-bool Shape::resolveImpulse(Point contactPoint, Shape *B)
-{
-    Shape *A = this;
-    Vec2 contact(contactPoint.x, contactPoint.y);
-    Vec2 aCenter(A->center.x, A->center.y);
-    Vec2 bCenter(B->center.x, B->center.y);
-    // Calculate radii from COM to contact
-    Vec2 ra = contact - aCenter;
-    Vec2 rb = contact - bCenter;
-
-    Line aVelLine(Point(0,0), A->speed, A->direction);
-    Vec2 aVelocity(aVelLine.point2.x, aVelLine.point2.y);
-    Line bVelLine(Point(0,0), B->speed, B->direction);
-    Vec2 bVelocity(bVelLine.point2.x, bVelLine.point2.y);
-
-    // Relative velocity
-    Vec2 rv = bVelocity + Cross( B->angularVelocity*M_PI/180.0, rb ) -
-        aVelocity - Cross( A->angularVelocity*M_PI/180.0, ra );
-
-    //get normal
-    Line normalNonUnit(A->center, B->center);
-    Line normalLine(Point(0, 0), 1, normalNonUnit.getDirection());
-    Vec2 normal(normalLine.point2.x, normalLine.point2.y);
-
-    // Relative velocity along the normal
-    real contactVel = Dot( rv, normal );
-
-    // Do not resolve if velocities are separating
-    if(contactVel > 0)
-    {
-        cerr << "Shapes are separating! Skipping" << endl;
-        return false;
-    }
-
-    real raCrossN = Cross( ra, normal );
-    real rbCrossN = Cross( rb, normal );
-    real invMassSum = 1.0/A->mass + 1.0/B->mass 
-        + Sqr( raCrossN ) * 1.0/A->momentI 
-        + Sqr( rbCrossN ) * 1.0/B->momentI;
-
-    // Calculate impulse scalar
-    //TODO: e probably shouldn't be 0
-    double e = 0;
-    real j = -(1.0f + e) * contactVel;
-    j /= invMassSum;
-    //j /= (real)contact_count;
-    
-    // Apply impulse
-    Vec2 impulse = normal * j;
-    A->ApplyImpulse( -impulse, ra );
-    B->ApplyImpulse(  impulse, rb );
-    return true;
-}
-
-void Shape::ApplyImpulse(const Vec2 &impulse, const Vec2 &contactVector)
-{
-    Vec2 impulseVelocity = 1.0/mass * impulse;
-
-    // This is in meters/second, but velocity is in meters/timestep.
-    //impulseVelocity = .03 * impulseVelocity;
-    //TODO: better timestep management!!!
-    
-    Line currentVelocityLine = Line(Point(0,0), speed, direction);
-    Vec2 currentVelocity = Vec2(currentVelocityLine.point2.x, 
-                                currentVelocityLine.point2.y);
-  
-    Vec2 newVelocity = currentVelocity + impulseVelocity;
-
-    Line newVelocityLine(Point(0, 0), Point(newVelocity.x, newVelocity.y));
-    speed = newVelocityLine.length();
-    direction = newVelocityLine.getDirection();
-
-    angularVelocity += 1.0/momentI * Cross( contactVector, impulse ) 
-        * 180.0/M_PI;
-}
-#endif
 
 void Shape::setBounds(int xMin, int xMax, int yMin, int yMax)
 {
@@ -695,32 +502,32 @@ void Shape::boundBounce()
 {
     CornerType corner;
     corner = cornerOutOfBounds();
-    double xMagnitude = cos(M_PI/180.0 * direction) * speed;
-    double yMagnitude = sin(M_PI/180.0 * direction) * speed;
+    double xMagnitude = cos(direction) * speed;
+    double yMagnitude = sin(direction) * speed;
     switch (corner)
     {
     case SHAPE_CORNER_LEFT:
         //make the shape go right
         if (xMagnitude < 0) xMagnitude = -xMagnitude;
-        else cout << "Already going right, skipping" << endl;
+        //else cout << "Already going right, skipping" << endl;
         lastHit = -1;
         break;
     case SHAPE_CORNER_RIGHT:
         //make the shape go left;
         if (xMagnitude > 0) xMagnitude = -xMagnitude;
-        else cout << "Already going left, skipping" << endl;
+        //else cout << "Already going left, skipping" << endl;
         lastHit = -2;
         break;
     case SHAPE_CORNER_UP:
         //make the shape go down;
         if (yMagnitude < 0) yMagnitude = -yMagnitude;
-        else cout << "Already going down, skipping" << endl;
+        //else cout << "Already going down, skipping" << endl;
         lastHit = -3;
         break;
     case SHAPE_CORNER_DOWN:
         //make the shape go up;
         if (yMagnitude > 0) yMagnitude = -yMagnitude;
-        else cout << "Already going up, skipping" << endl;
+        //else cout << "Already going up, skipping" << endl;
         lastHit = -4;
         break;
     case SHAPE_CORNER_BOTH:
@@ -734,14 +541,6 @@ void Shape::boundBounce()
     Line newVelocity(Point(0,0), Point(xMagnitude, yMagnitude));
     this->direction = newVelocity.getDirection();
     this->speed = newVelocity.length();
-
-#if 0
-    if (xMagnitude < 0)
-    {
-        cout << "I bet you will never guess who this is." << endl;
-        cout << "OH MY GOD IT'S THE MATRIX YES I'M NEO" << endl;
-    }
-#endif
 }
 
 //TODO: Actually check for SHAPE_CORNER_BOTH
@@ -772,28 +571,13 @@ CornerType Shape::cornerOutOfBounds()
     return SHAPE_CORNER_NONE;
 }
 
-/*
- Crack *Shape::addCrack(Point impactPoint)
- {
-     vector<Line*>::iterator l;
-     Point result;
-     for (l = lines.begin(); l != lines.end(); ++l)
-     {
-         if ((*l)->on(impactPoint, 10, &result))
-         {
-             return (*l)->addCrack(result, this);
-         }
-     }
-     return NULL;
- }
-*/
-
 //new idea!
 //get all cracks in a given (simple) radius
 //(if none, create)
 //increase the stuff and things?
 //increase the grandest children once, and everyone else randomly.
-//
+
+//NOTE: decent idea, but never finished.
 #if 0
 int Shape::fractureAt(Point clickPoint, double force)
 {
@@ -882,21 +666,8 @@ int Shape::fractureAt(Point clickPoint, double forceIgnored)
      vector<Crack*>::iterator c;
      for (c = children.begin(); c != children.end(); ++c)
      {
-         //(*c)->increaseOne(force/children.size());
          (*c)->expand(force, this);
      }
-
-     /*
-     for (c = children.begin(); c != children.end(); ++c)
-     {
-         if ((*c)->isShapeSplit())
-         {
-             splitLines.clear();
-             (*c)->getSplitLinesAndCracks(&splitLines, &splitCracks, this);
-             getShapeWithCrack(*c)->split(splitLines, splitCracks);
-         }
-     }
-     */
 
      return children.size();
 }
@@ -943,143 +714,13 @@ void Shape::addPoint(Point toAdd)
     //calculateCenter();
     build();
 
+    /*
     vector<Line*>::iterator l;
     for (l = lines.begin(); l != lines.end(); ++l)
     {
         (*l)->point1.print();
-    }
+    }*/
 }
-
-/*
-Line *Shape::getLineNearest(Point clickPoint) const
-{
-    vector<Line*>::const_iterator l;
- 
-    double radius = 1000000;
-   
-    Line *toReturn = NULL;
-
-    double minDist = Line(clickPoint, lines.front()->point1).length();
-    toReturn = lines.front();
-    Point resultPoint;
-    
-    for (l = lines.begin(); l != lines.end(); ++l)
-    {
-        (*l)->on(clickPoint, radius, &resultPoint);
-        Line dist(clickPoint, resultPoint);
-        if (dist.length() < minDist)
-        {
-            minDist = dist.length();
-            toReturn = *l;
-        }
-    }
-    
-    return toReturn;
-}
-
-//Return the line that:
-//has the nearest crack within radius
-//or, if no line has a crack within radius, the first line found.
-Crack * Shape::getAffectedCrack(Point impactPoint, double radius)
-{
-    //step 1: find the line that impactPoint is on.
-    vector<Line*>::const_iterator l, lon = lines.end();
-    if (!lines.size())
-    {
-        cerr << "WTF...Problems!" << endl;
-        return NULL;
-    }
-    Line *lineOn = getLineNearest(impactPoint);
-    for (l = lines.begin(); l != lines.end(); ++l)
-    {
-        if ((*l)->on(impactPoint))
-        {
-            lon = l;
-            break;
-        }
-    }
-    if (lon == lines.end())
-    {
-        impactPoint.drawCircle(3);
-        JDL::flush();
-        JDL::sleep(5);
-        cerr << "ERROR: The impactPoint was not on the shape" << endl;
-        return NULL;
-    }
-    //step 2: find the crack on lon with the closest start point to impactPoint
-    Line distance;
-    distance.point1 = impactPoint;
-    double minDist = radius;
-    vector<Crack*>::const_iterator c;
-    Crack *toReturn = NULL;
-    for (c = (*lon)->cracks.begin(); c!= (*lon)->cracks.end(); ++c)
-    {
-        distance.point2 = (*c)->startPoint();
-        if (distance.length() < minDist)
-        {
-            minDist = distance.length();
-            toReturn = *c;
-        }
-    }
-
-    //step 3: search backwards through the lines to find a crack.
-    double backwardsDist = Line(impactPoint, (*lon)->point1).length();
-    l = lon;
-    while (backwardsDist < radius)
-    {
-        if (l == lines.begin())
-        {
-            l = lines.end();
-        }
-        l--;
-
-        distance.point1 = (*l)->point2;
-        for (c = (*l)->cracks.begin(); c!= (*l)->cracks.end(); ++c)
-        {
-            distance.point2 = (*c)->startPoint();
-            if ((distance.length() + backwardsDist)< minDist)
-            {
-                minDist = distance.length() + backwardsDist; 
-                toReturn = *c;
-            }
-        }
-
-        backwardsDist += (*l)->length();
-    }
-
-    //Step 4: search forwards through the lines to find a crack.
-    double forwardsDist = Line(impactPoint, (*lon)->point2).length();
-    l = lon;
-    while (forwardsDist < radius)
-    {
-        l++;
-        if (l == lines.end())
-        {
-            l = lines.begin();
-        }
-
-        distance.point1 = (*l)->point1;
-        for (c = (*l)->cracks.begin(); c!= (*l)->cracks.end(); ++c)
-        {
-            distance.point2 = (*c)->startPoint();
-            if ((distance.length() + forwardsDist) < minDist)
-            {
-                minDist = distance.length() + forwardsDist; 
-                toReturn = *c;
-            }
-        }
-
-        forwardsDist += (*l)->length();
-    }
-    
-    if (!toReturn)
-    {
-        //create new crack on lon
-        toReturn = (*lon)->addCrack(impactPoint, this);
-    }
-    return toReturn;
-}
-*/
  
 //returns the nearest crack within radius.
 //If there is no crack within radius, create a new crack at impactPoint
@@ -1097,51 +738,12 @@ Crack *Shape::getAffectedCrack(Point impactPoint, double radius)
             closestCrack = *c;
         }
     }
-    /*
-    Crack *toReturn = NULL;
-    if (closestCrack == NULL)
-    {
-        toReturn = new Crack(impactPoint);
-        cracks.push_back(toReturn);
-    }
-    else
-    {
-        toReturn = closestCrack->addChild();
-    }
-    */
     if (closestCrack == NULL)
     {
         closestCrack = new Crack(impactPoint);
         cracks.push_back(closestCrack);
     }
     return closestCrack;
-}
-
-//assume forces and hitPoints are empty.
-//fills both of them to correspond to lines.
-void Shape::distributeForce(Point impactPoint, double force, double radius,
-                            std::vector<int> *forces, 
-                            std::vector<Point> *hitPoints) const
-{
-    
-    /*
-      In this iteration, all we do is check if the impact point is near
-      the corner. If it is, split up the impact.
-      Eventually, look at force and size of the line and stuff
-      Ya, looking at that stuff is starting to drive me crazy.
-    */ 
-
-    //ok, so what do we want?
-    //loop through all the lines.
-    //When we find the one that it is on, do stuff.
-    //if corner, we have some problems...
-    //put half the force on this one
-    //make a new function to distribute force?
-    //or is that this function?
-
-    //that's this function!
-
-    //scan through 
 }
 
 bool Shape::containsLine(Line *toCheck) const
@@ -1157,17 +759,30 @@ bool Shape::containsLine(Line *toCheck) const
     return false;
 }
 
+//returns the closest point
 bool Shape::pointOn(Point toCheck, double radius, Point *resultPoint) const
 {
     vector<Line*>::const_iterator l;
+    Point minPoint;
+    double minDist;
+    bool foundPoint = false;
+    minDist = Line(toCheck, lines[0]->point1).length();
+    minPoint = lines[0]->point1;
     for (l = lines.begin(); l != lines.end(); ++l)
     {
         if ((*l)->on(toCheck, radius, resultPoint))
         {
-            return true;
+            foundPoint = true;
+            double dist = Line(toCheck, *resultPoint).length();
+            if (dist < minDist)
+            {
+                minPoint = *resultPoint;
+                minDist = dist;
+            }
         }
     }
-    return false;
+    *resultPoint = minPoint;
+    return foundPoint;
 }
 bool Shape::pointOn(Point toCheck) const
 {
@@ -1234,23 +849,6 @@ bool Shape::lineIntersectsCrackNearest(const Line &toCheck,
     vector<Point>::iterator p;
     vector<Crack*>::iterator c = intersectCracks.begin();
 
-/*
-    //remove any point1 intersects:    
-    for (p = intersectPoints.begin(); p != intersectPoints.end();)
-    {
-        if (*p == toCheck.point1)
-        {
-            p = intersectPoints.erase(p);
-            c = intersectCracks.erase(c);
-        }
-        else
-        {
-            ++c;
-            ++p;
-        }
-    }
-*/
-
     if (intersectPoints.size() == 0) return false;
     
     double minDist = Line(toCheck.point1, *intersectPoints.begin()).length();
@@ -1265,7 +863,6 @@ bool Shape::lineIntersectsCrackNearest(const Line &toCheck,
             minDist = dist.length();
             *intersectPoint = *p;
             *intersectCrack = *c;
-            cout << "WOO" << endl;
         }
         c++;
     }
@@ -1346,6 +943,29 @@ bool Shape::lineIntersectsBorderCrackNearest(const Line &toCheck,
         toReturn = false;
     }
     return toReturn;
+}
+
+Line Shape::getNormalLine(Point onShape)
+{
+    vector<Line*>::iterator l;
+    for (l = lines.begin(); l != lines.end(); ++l)
+    {
+        if ((*l)->on(onShape))
+        {
+            double testDirection = (*l)->getDirection() + (M_PI / 2);
+            Line testNormal(onShape, .1, testDirection);
+            if (!inside(testNormal.point2))
+            {
+                return testNormal;
+            }
+            else
+            {
+                return (Line(onShape, .1, (*l)->getDirection() - M_PI / 2));
+            }
+        }
+    }
+    cerr << "The point for a normal line does not exist on the shape!" << endl;
+    return Line(Point(0, 0), Point(0, 0));
 }
 
 bool Shape::lineOnBorder(const Line &toCheck) const
@@ -1447,29 +1067,11 @@ void Shape::split(const vector<Line*> &splitLines,
     //copy splitLines
     vector<Line*> splitLinesCopy1;
     vector<Line*> splitLinesCopy2;
-#if 1
     for (l = splitLines.begin(); l != splitLines.end(); ++l)
     {
         splitLinesCopy1.push_back(new Line(**l));
         splitLinesCopy2.push_back(new Line(**l));
     }
-#endif
-/*
-    //but only copy the lines properly. Copy the cracks as pointers.
-    for (l = splitLines.begin(); l != splitLines.end(); ++l)
-    {
-        splitLinesCopy1.push_back(new Line((*l)->point1, (*l)->point2));
-        for (c = (*l)->cracks.begin(); c != (*l)->cracks.end(); ++c)
-        {
-            splitLinesCopy1.back()->cracks.push_back(*c);
-        }
-        splitLinesCopy2.push_back(new Line((*l)->point1, (*l)->point2));
-        for (c = (*l)->cracks.begin(); c != (*l)->cracks.end(); ++c)
-        {
-            splitLinesCopy2.back()->cracks.push_back(*c);
-        }
-    }
-*/  
     appendLines(&lines1, splitLinesCopy1);
     appendLines(&lines2, splitLinesCopy2);
     
@@ -1479,18 +1081,12 @@ void Shape::split(const vector<Line*> &splitLines,
     */
     /* Modify this shape (using lines2) */
     //reassign the lines in this shape to be those of lines2.
-    /*
-    this->lines.clear();
-    this->lines.assign(lines2.begin(), lines2.end());
-    calculateCenter();
-    */
 
-#if 1 //new code
     this->addCracks(splitCracks);
     Shape *newShape = new Shape(*this);
-
-    cout << "this cracks.size(): " << cracks.size()
-         <<". newShape's crack.size(): " << newShape->cracks.size() << endl;
+    newestID++;
+    newShape->ID = newestID;
+    newestID++;
 
     this->updateLines(lines2);
     newShape->updateLines(lines1);
@@ -1499,57 +1095,25 @@ void Shape::split(const vector<Line*> &splitLines,
     newShape->removeCracksOutside();
 
     toDraw->push_back(newShape);
-#else //old code
-    this->updateLines(lines2);
 
-    vector<Crack*> outsideCracks;
-    getCracksOutside(&outsideCracks);
-    addCracks(splitCracks);
-    removeCracksOutside();
-
-    if (!sanityCheck())
-    {
-        debugDraw();
-    }
-
-
-    /* Create a new shape (using lines1) */
-    Shape *newShape = new Shape(lines1, this->toDraw);
-    newShape->copyBounds(*this);
-    //newShape->calculateCenter();
-    newShape->addCracks(splitCracks);
-    newShape->addCracks(outsideCracks);
-    newShape->removeCracksOutside();
-
-    if (!newShape->sanityCheck())
-    {
-        newShape->debugDraw();
-    }
-    toDraw->push_back(newShape);
-    newShape->speed = this->speed;
-    newShape->direction = this->direction;
-    newShape->angularVelocity = this->angularVelocity;
-    newShape->orientation = this->orientation;
-#endif
     //make the new shape move away from the current shape.
     double newDirection = 0;    
     Line crackDirection(splitLines[0]->point1, splitLines.back()->point2);
     
     int modifier = 1;
     //if (sameLineSplit) modifier = -1;
-    newDirection = crackDirection.getDirection() + (modifier*90);
+    newDirection = crackDirection.getDirection() + (modifier*M_PI/2);
     Line newDirectionRay(splitLines[0]->point1, newDirection, 42);
     if (rayTrace(newDirectionRay) % 2)
     {
         //if odd, so in the direction of the shape
-        newDirection -=180;
+        newDirection -=M_PI;
     }
-    //newShape->setSpeed(0.42 + this->speed, newDirection);
-    newShape->accelerate(2, newDirection);
+    newShape->accelerate(40, newDirection);
+    newShape->translate(3, newDirection);
 
     //TODO: Delete splitlines here! We made two copies
     
-    cout << "Finished the split" << endl;
 #ifdef RESEARCH_SAVE_ONE
     save("saves/After_Split.txt");
 #endif
@@ -1570,17 +1134,6 @@ void Shape::saveStory()
     saveShapes(streamy.str(), toDraw);
     saveNum++;
 }
-
-/*
-void Shape::updateCrackParents()
-{
-    vector<Line*>::iterator l;
-    for (l = this->lines.begin(); l != this->lines.end(); ++l)
-    {
-        (*l)->setCrackParents(this);
-    }
-}
-*/
 
 void Shape::addCracks(const std::vector<Crack*> &cracksToAdd)
 {
@@ -1610,12 +1163,6 @@ void Shape::deleteCrack(Crack *toDelete)
 void Shape::grabShapeLines(Point startPoint, Point endPoint,
                            vector<Line*> *result)
 {
-#if 0
-    startPoint.print();
-    startPoint.drawCircle(3);
-    JDL::flush();
-    JDL::sleep(5);
-#endif
     /*
       step 1: find the first line that contains startPoint.
       either split it or not.
@@ -1701,7 +1248,6 @@ void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
 {    
 
     Line *lastLine1 = lines1->back();
-    //int index = lastLine1->index + 1;
 
     Point lastPoint2 = lines2.back()->point2;
     Point firstPoint2 = lines2[0]->point1;
@@ -1714,8 +1260,6 @@ void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
         vector<Line*>::iterator i;
         for (i = lines2.begin(); i != lines2.end(); ++i)
         {
-            //(*i)->index = index;
-            //index++;
             lines1->push_back(*i);
         }
     }
@@ -1727,9 +1271,6 @@ void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
         vector<Line*>::reverse_iterator i;
         for (i = lines2.rbegin(); i != lines2.rend(); ++i)
         {
-            //(*i)->index = index;
-            //index++;
-
             //switch point1 and point2.
             (*i)->switchPoints();
             lines1->push_back(*i);
@@ -1744,10 +1285,7 @@ void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
         for (debug = lines1->begin(); debug != lines1->end(); ++debug)
         {
             cin >> garbage;
-            //int tempIndex = (*debug)->index;
-            //(*debug)->index = 1;
             (*debug)->draw(1);
-            //(*debug)->index = tempIndex;
             JDL::flush();
         }
 
@@ -1768,17 +1306,15 @@ void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2)
     }
 }
 
-void Shape::accelerate(double acceleration, double degrees)
+void Shape::accelerate(double acceleration, double radians)
 {
-    cout << "Speed: " << this->speed << endl;
     Point origin(0,0);
     Line velocity(origin, this->speed, this->direction);
-    velocity.point2.x += acceleration * cos(M_PI/180 * degrees);
-    velocity.point2.y += acceleration * sin(M_PI/180 * degrees);
+    velocity.point2.x += acceleration * cos(radians);
+    velocity.point2.y += acceleration * sin(radians);
     
     this->direction = velocity.getDirection();
     this->speed = velocity.length();
-    cout << "New Speed: " << this->speed << endl;
 }
 
 void Shape::calculateHitBox()
@@ -1828,7 +1364,8 @@ void Shape::calculateMass()
     int totalX = 0, totalY = 0;
     int w = 0, h = 0;
     mass = 0;
-    int skipFactor = 1;
+    int skipFactor = 2;
+    numPointsInside = 0;
     for (w = boxTopLeft.x; w < boxTopLeft.x + width; w += skipFactor)
     {
         for (h = boxTopLeft.y; h < boxTopLeft.y + height; h += skipFactor)
@@ -1837,78 +1374,58 @@ void Shape::calculateMass()
             {
                 //cout << w << "," << h << endl;
                 #ifdef MASS_DEBUG
-                    JDL::point(w, h);
+                    Line temp(Point(w, h), Point(w, h));
+                    temp.draw();
                 #endif
-                
-                //JDL::circle(w, h, 5);
                 totalX += w;
                 totalY += h;
-                mass += 1;
+                mass += (skipFactor*PIXELS_TO_METERS) * (skipFactor*PIXELS_TO_METERS);
+                numPointsInside++;
             }
         }
     }
-    if (mass == 0)
+    if (mass <= 30*PIXELS_TO_METERS*PIXELS_TO_METERS)
     {
-        cout << "This shape should be deleted!" << endl;
+        this->toDelete = true;
     }
-    cout << "totalX: " << totalX << ", mass: " << mass << endl;
-    //Note: This trick only works with mass += 1 every time.
-    center = Point(totalX/mass, totalY/mass);
-    center.print();
+    else
+    {
+        this->toDelete = false;
+    }
+    center = Point((double)totalX/numPointsInside, (double)totalY/numPointsInside);
 
-    #ifdef MASS_DEBUG
-        JDL::setDrawColor(255, 255, 255);
-        this->draw();
-        JDL::flush();
-        char garbage;
-        cin >> garbage;
-        //JDL::sleep(5);
-    #endif
+#ifdef MASS_DEBUG
+    JDL::setDrawColor(255, 255, 255);
+    this->draw();
+    JDL::flush();
+    char garbage;
+    cin >> garbage;
+    //JDL::sleep(5);
+#endif
 }
 
 //assumes mass and hitbox have been set up already
 void Shape::calculateMoment()
 {
-    int w, h;
-    int skipFactor = 5;
-    int totalDistSquared = 0;
+    double w, h;
+    int skipFactor = 2;
+    //double totalDistSquared = 0;
+    momentI = 0;
     for (w = boxTopLeft.x; w < boxTopLeft.x + width; w += skipFactor)
     {
         for (h = boxTopLeft.y; h < boxTopLeft.y + height; h += skipFactor)
         {
             if (inside(Point(w, h)))
             {
-                totalDistSquared += ((w - center.x) * (w - center.x))
-                    + ((h - center.y) * (h - center.y));
+                double xDist = (w - center.x) * PIXELS_TO_METERS;
+                double yDist = (h - center.y) * PIXELS_TO_METERS;
+                double distSquared = xDist*xDist + yDist*yDist;
+                momentI += distSquared * mass / numPointsInside;
             }
         }
     }
-    momentI = totalDistSquared * mass * 0.1;
-    //cout << "momentI is " << momentI << endl;
 }
-/*
-void Shape::calculateCenter()
-{
-    vector<Line*>::iterator l;
-    double xTotal = 0;
-    double yTotal = 0;
-    for (l = lines.begin(); l != lines.end(); ++l)
-    {
-        xTotal += (*l)->point2.x;
-        yTotal += (*l)->point2.y;
-    }
-    center.x = xTotal/lines.size();
-    center.y = yTotal/lines.size();
-    estRadius = 0;
-    for (l = lines.begin(); l != lines.end(); ++l)
-    {
-        Line dist(center, (*l)->point2);
-        if (dist.length() > estRadius)
-        {
-            estRadius = dist.length();
-        }
-    }
-    }*/
+
 
 //return true if the shape is closed, return false otherwise.
 //TODO: this is a quick sanity check. Figure 8s won't be checked.
@@ -1966,6 +1483,8 @@ bool Shape::sanityCheck()
 //draws the shape, one line at a time, in order, then asks to redraw.
 void Shape::debugDraw()
 {
+    cout << "Found an error in a shape! Turn on debugging to explore it." << endl;
+    return;
     char selector;
     cout << "begin the debug draw? (yes:any/no: n)" << endl;
     cin >> selector;
@@ -1997,13 +1516,7 @@ void Shape::getCracksOutside(vector<Crack*> *toFill)
         }
     }
 }
-/*
-void Shape::removeCracksOutside(int r, int g, int b)
-{
-    JDL::setDrawColor(r, g, b);
-    remo
-}
-*/
+
 void Shape::removeCracksOutside()
 {
     vector<Crack*>::iterator c;
@@ -2015,7 +1528,6 @@ void Shape::removeCracksOutside()
             //if (!inside((*c)->point2))
         {
             c = cracks.erase(c);
-            cout << "REMOVING" << endl;
         }
         else
         {
@@ -2030,28 +1542,6 @@ bool Shape::inside(Point toTest)
     int rayResult = rayTrace(ray);
     return (rayResult % 2); //if odd, inside, if even, outside.
 }
-
-/*
-string Shape::generateJSON()
-{
-    string toReturn;
-    //stringstream streamy;
-    //streamy << "\"Shape" << index << "\": {";
-    //toReturn = streamy.str();
-    toReturn = "[";
-    vector<Line*>::iterator l;
-    for (l = lines.begin(); l != lines.end(); ++l)
-    {
-        toReturn += (*l)->generateJSON();
-        if (l + 1 != lines.end())
-        {
-            toReturn += ",";
-        }
-    }
-    toReturn += "]";
-    return toReturn;
-}
-*/
 
 string Shape::generateJSON() const
 {
@@ -2223,6 +1713,7 @@ Shape *Shape::getShapeWithCrack(Crack *crackToCheck)
     }
     return NULL;
 }
+
 /*
 //expects that each child it is passed is a point crack.
 //randomly adds another crack (or not) to each child.

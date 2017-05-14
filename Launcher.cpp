@@ -1,4 +1,7 @@
 #include <iostream>
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 
 #include "Launcher.hpp"
 
@@ -18,9 +21,9 @@ Launcher::Launcher(vector<Shape*> *toDraw) : Shape(toDraw)
     setBoundType(SHAPE_BOUND_BOUNCE);
 
     translate(600, 0);
-    translate(100, 90);
+    translate(100, M_PI/2);
     this->toDraw = toDraw;
-    orientation = 180;
+    orientation = M_PI;
     toDraw->push_back((Shape*) this);
 }
 
@@ -33,13 +36,13 @@ void Launcher::fire()
 {
     vector<Line*> projectileLines;
     
-    Line distLine(center, width/2 + 20, orientation);
+    Line distLine(center, width/2 + 30, orientation);
     createProjectileLines(distLine.point2, 5, 20,
                           &projectileLines);
     Shape *projectile = new Shape(projectileLines, toDraw);
     projectile->setBounds(0, 800, 0, 800);
     projectile->setBoundType(SHAPE_BOUND_BOUNCE);
-    projectile->setVelocity(10, orientation);
+    projectile->setVelocity(142, orientation);
     projectile->projectile = true;
     
     cout << "ATTACK" << endl;
@@ -55,6 +58,6 @@ void Launcher::createProjectileLines(Point startPoint, int numSides,
     for (i = 1; i < numSides; i++)
     {
         toFill->push_back(new Line(toFill->back()->point2, sideSize,
-                                   360.0/numSides*i));
+                                   M_PI*2/numSides*i));
     }
 }

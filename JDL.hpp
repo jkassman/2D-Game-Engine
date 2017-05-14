@@ -8,7 +8,7 @@
 #define MIDWAY_MOVE_KEY SDL_SCANCODE_M
 
 
-//#define JDL_USE_SDL
+#define JDL_USE_SDL
 
 #ifdef JDL_USE_SDL
 #include <SDL.h>
@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <time.h>
 
 class JDL
 {
@@ -69,6 +70,7 @@ public:
     //static string intToString(std::string toConvert);
     static double calculateTheta(double x, double y);
     static int location(double x, double y);
+    static double timeBetweenClocks(clock_t later, clock_t earlier);
 
 private:
 	//the following functions are used only in getInt and getDouble. Possibly bad form, but I thought it was better than typing the same thing 10 times.

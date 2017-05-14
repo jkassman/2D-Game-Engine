@@ -19,6 +19,7 @@ private:
     std::vector<Crack*> childCracks;
 
     void setDefaults();
+    void deleteChild(Crack *toDelete);
     
 public:
     //force is a measure of how much the crack should increase in length
@@ -36,7 +37,7 @@ public:
     Point startPoint();
 
     void scale(double factor);
-    void translate(double distance, double degrees);
+    void translate(double distance, double radians);
     void rotateAbout(double theta, Point about);
     void draw() const;
 

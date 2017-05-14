@@ -14,8 +14,6 @@
 
 using namespace std;
 
-//#define CWR 2
-
 Line::Line()
 {
 
@@ -38,8 +36,8 @@ Line::Line(Point point1, Point point2)
 Line::Line(Point point1, double length, double direction)
 {
     this->point1 = point1;
-    this->point2 = Point(point1.x + cos(direction*M_PI / 180) * length, 
-                         point1.y + sin(direction*M_PI / 180) * length);
+    this->point2 = Point(point1.x + cos(direction) * length, 
+                         point1.y + sin(direction) * length);
     this->ignorePoint = 0;
 }
 
@@ -71,10 +69,10 @@ void Line::scale(double factor)
     point2.y *= factor;
 }
 
-void Line::translate(double distance, double degrees)
+void Line::translate(double distance, double radians)
 {
-    point1.translate(distance, degrees);
-    point2.translate(distance, degrees);
+    point1.translate(distance, radians);
+    point2.translate(distance, radians);
 }
 
 void Line::rotateAbout(double theta, Point about)
@@ -168,9 +166,6 @@ bool Line::rayIntersects(const Line &otherLine) const
 //return true if they intersect, false otherwise.
 //NOTE: IGNORES POINT1!
 //(If ray.point1 is on otherLine, that does NOT count as an intersect)
-
-/* Probably isn't working, requires further testing */
-//Nah, I think it works.
 bool Line::rayIntersects(const Line &otherLine, Point *resultPoint) const
 {
     Point intersect;
@@ -271,7 +266,7 @@ bool Line::intersects(const Line &otherLine, Point *resultPoint) const
 bool Line::on(const Point &testPoint, double radius, Point *resultPoint) const
 {
     //get the line that goes through the point and is normal to this line.
-    Line normal(testPoint, 1, this->getDirection() + 90);
+    Line normal(testPoint, 1, this->getDirection() + M_PI/2);
     intersectsInfinite(normal, resultPoint);
     if (resultPoint->near(testPoint, radius))
     {
@@ -336,81 +331,7 @@ bool Line::inRect(const Point &testPoint) const
     }
     return false;
 }
-/*
-bool Line::on(const Point & testPoint, double radius, Point *resultPoint) const
-{
-    double slope;
-    double maxY, minY, maxX, minX;
-    maxY = max(point2.y, point1.y);
-    minY = min(point2.y, point1.y); 
-    maxX = max(point2.x, point1.x);
-    minX = min(point2.x, point1.x);
-    
-    if ((testPoint.y <= (maxY + radius))
-        && (testPoint.y >= (minY- radius))
-        && (testPoint.x <= (maxX + radius)) 
-        && (testPoint.x >= (minX - radius)))
-    {
-        if (JDL::doublesEqual(point2.x, point1.x))
-        { //catch case where line is vertical
-            double verticalY;
-            if (testPoint.y > maxY)
-            {
-                verticalY = maxY;
-            }
-            else if (testPoint.y < minY)
-            {
-                verticalY = minY;
-            }
-            else
-            {
-                verticalY = testPoint.y;
-            }
-            resultPoint->x = point2.x;
-            resultPoint->y = verticalY;
-            return true;
-        }  
-        else
-        {
-            slope = (point2.y - point1.y) / (point2.x - point1.x);
-            double checkY = (slope*testPoint.x + point1.y - (slope * point1.x));
-            if ((testPoint.y >= (checkY - radius))
-                && (testPoint.y <= (checkY + radius)))
-            {
-                double returnX, returnY;
-                if (testPoint.x > maxX)
-                {
-                    returnX = maxX;
-                }
-                else if (testPoint.x < minX)
-                {
-                    returnX = minX;
-                }
-                else
-                {
-                    returnX = testPoint.x;
-                }
-                if (checkY > maxY)
-                {
-                    returnY = maxY;
-                }
-                else if (checkY < minY)
-                {
-                    returnY = minY;
-                }
-                else
-                {
-                    returnY = checkY;
-                }
-                resultPoint->x = returnX;
-                resultPoint->y = returnY;
-                return true; 
-            }
-        }
-    }
-    return false;
-}
-*/
+
 //lazy implementation
 bool Line::on(const Point &testPoint) const
 {
@@ -430,80 +351,6 @@ bool Line::coincident(const Line &other) const
     return (on(other.point1) && on(other.point2));
 }
 
-/*
-//returns the number of cracks found
-int Line::getImpactedCracks(Point clickPoint, Shape *parentShape, 
-                             vector<Crack*> *impactedCracks)
-{
-    vector<Crack*>::iterator i;
-    double radius = 10; //eventually, set the radius based on the force.
-    int numCracks = 0;
-    for (i = cracks.begin(); i != cracks.end(); ++i)
-    {
-        if ((*i)->startPoint().near(clickPoint, radius))
-        {
-            impactedCracks->push_back(*i);
-            numCracks++;
-        }
-    }
-    return numCracks;
-}
-*/
-
-/*             
-int Line::increaseCracks(Point impactPoint, Shape *parentShape, double force)
-{
-    //eventualy, want to handle multiple splits.
-
-    //eventually, increase all cracks that are near.
-
-    //for now, incrase any crack within a certain radius.
-    int numCracksIncreased = 0;
-    vector<Crack*>::iterator i = cracks.begin();
-    vector<Line*> splitLines;
-    int numSplit = 0;
-    while (i != cracks.end())
-    {
-        if ((*i)->startPoint().near(impactPoint, 10))
-        {
-            numCracksIncreased++;
-            (*i)->increase(force);
-            if ((*i)->isShapeSplit())
-            {
-                (*i)->getSplitLines(&splitLines);
-                (*i)->clearLines(); //so the destructor doesn't erase the lines
-                i = cracks.erase(i);
-                parentShape->split(splitLines);
-                return 1;
-            }
-            else
-            {
-                ++i;
-            }
-        }
-        else
-        {
-            ++i;
-        }
-    }
-    if (numCracksIncreased == 0)
-    {
-        cracks.push_back(new Crack(parentShape, impactPoint, this));
-        cracks.back()->increase(force);
-        if (cracks.back()->isShapeSplit())
-        {
-            cracks.back()->getSplitLines(&splitLines);
-            cracks.back()->clearLines();
-            cracks.pop_back();
-            parentShape->split(splitLines);
-            return 1;
-        }
-        
-    }
-    cout << "Finished increasing cracks" << endl;
-    return numSplit;
-}
-*/
 //splitPoint must be on the line
 //will create two new lines: this will be point1->splitPoint,
 //newLine is splitPoint->point2
@@ -537,7 +384,6 @@ double Line::getDirection() const
 {
     double direction;
     direction = JDL::calculateTheta(point2.x-point1.x, point2.y-point1.y);
-    direction *= 180/M_PI;
     direction *= -1; //not sure why this is needed...
     return direction;
 }
@@ -552,37 +398,6 @@ void drawLines(vector<Line*> toDraw, double secondsToSleep)
         JDL::sleep(secondsToSleep);
     }
 }
-#if 0
-string Line::generateJSON()
-{
-    string toReturn;
-    stringstream streamy;
-    //streamy << "Line" << index << ": {";
-    //toReturn = streamy.str();
-    streamy << "{" << "\"point1\":" << point1.generateJSON()
-            << "," << "\"point2\":" << point2.generateJSON();
-    toReturn = streamy.str();
-    /*
-    if (cracks.size() > 0)
-    {
-        toReturn += ",\"cracks\":[";
-        vector<Crack*>::iterator c;
-        for (c = cracks.begin(); c != cracks.end(); ++c)
-        {
-            toReturn += (*c)->generateJSON();
-            if (c+1 != cracks.end())
-            {
-                toReturn += ",";
-            }
-        }
-        toReturn += "]";
-    }
-    */
-    toReturn += "}";
-    return toReturn;
-}
-#endif
-
 
 string Line::generateJSON() const
 {
@@ -598,19 +413,3 @@ string Line::generateJSON() const
     
     return toReturn;
 }
-
-/*
-bool Line::sanityCheck()
-{
-    vector<Crack*>::iterator c;
-    bool toReturn = true;
-    for (c = cracks.begin(); c != cracks.end(); ++c)
-    {
-        if (!(*c)->sanityCheck(parentShape, this))
-        {
-            toReturn = false;
-        }
-    }
-    return toReturn;
-}
-*/

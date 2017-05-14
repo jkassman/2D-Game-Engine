@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <time.h>
 
 #ifdef JDL_USE_SDL
 #include <Windows.h>
@@ -18,6 +19,7 @@ int main(int argc, char **argv)
 {
     const int WIDTH = 800;
     const int HEIGHT = 800;
+    const double TIMESTEP = 0.03;
 
     JDL::init(WIDTH, HEIGHT, "Research");
 
@@ -41,13 +43,10 @@ int main(int argc, char **argv)
     bool splitOccurred = false;
 
     Launcher launchy(&toDraw);
-    launchy.setVelocity(4, 90);
-    //double launchMoveSpeed = 5;
-    //double launchMoveDirection = 90;
+    launchy.setVelocity(40, M_PI);
 
     Shape *building = NULL;
     bool quit = false;
-    //bool first = true;
     int toDrawSize;
     int j;
 #ifndef JDL_USE_SDL
@@ -56,15 +55,18 @@ int main(int argc, char **argv)
     int storyNum = 0;
     bool stop = false;
     string filename;
-        
+    clock_t cycleEnd = clock();
     while (!quit)
     {
+        clock_t cycleStart = clock();
+        
         double moveDist = 50;
         vector<Shape*>::iterator s;
 
         if (stop)
         {
-            char next = gfx_wait();
+            int dummy;
+            char next = JDL::wait(&dummy, &dummy);
             stringstream streamy;
             switch(next)
             {
@@ -146,17 +148,6 @@ int main(int argc, char **argv)
             if (stop) continue;
         }
     //get input
-        /*
-        if (first)
-        {
-            input = 'j';
-            first = false;
-        }
-        else
-        {
-            input = JDL::wait(&x, &y);
-        }
-        */
         if (JDL::event_waiting())
         {
             input = JDL::wait(&x, &y);
@@ -179,6 +170,16 @@ int main(int argc, char **argv)
             building->setBounds(0, 800, 0, 800);
             toDraw.push_back(building);
             break;
+        case 'd':
+            //delete all shapes with less mass than .3
+            for (i = toDraw.begin(); i != toDraw.end(); ++i)
+            {
+                if ((*i)->getMass() < .03)
+                {
+                    (*i)->toDelete = true;
+                }
+            }
+            break;
         case 'f':
             mode = 0;
             break;
@@ -187,12 +188,6 @@ int main(int argc, char **argv)
             break;
         case 's':
             //stop everything
-            /*
-            for (s = toDraw.begin(); s != toDraw.end(); ++s)
-            {
-                (*s)->setVelocity(0, 0);
-            }
-            */
             stop = true;
             break;
         case 'o':
@@ -211,7 +206,6 @@ int main(int argc, char **argv)
                 building->addPoint(Point(x, y));
                 break;
             case 0:
-                //cout << "clicked!" << endl;
                 toDrawSize = toDraw.size();
                 for (j = 0; j < toDrawSize; j++)
                 {
@@ -227,95 +221,61 @@ int main(int argc, char **argv)
                 {
                     toDraw[0]->saveStory();
                 }
-#endif
-
-                while (splitOccurred)
-                {
-                    splitOccurred = false;
-                    for (s = toDraw.begin(); s != toDraw.end(); ++s)
-                    {
-                        if ((*s)->tryOneSplit())
-                        {
-                            splitOccurred = true;
-                            break;
-                        }
-                    }
-                }
-               
-                //saveShapes("saves/All_After_Split.txt", &toDraw);
-                //cout << "time to draw!" << endl;
+#endif          
                 break;
             }
         }
-
-        //cout << "About to draw stuff, sizeof toDraw: " <<toDraw.size() << endl;
-
     //draw and move shapes
         JDL::clear();
-        /*
-        if (launchy.getPosition().y <= 100)
-        {
-            launchMoveDirection = 90;
-        }
-        if (launchy.getPosition().y >= (HEIGHT - 100))
-        {
-            launchMoveDirection = -90;
-        }
-        launchy.move(launchMoveSpeed, launchMoveDirection);
-        */
         for (i = toDraw.begin(); i != toDraw.end(); ++i)
         {
-            (*i)->move();
+            clock_t moveClock = clock();
+            double toMove = JDL::timeBetweenClocks(moveClock, cycleEnd);
+            if (toMove > TIMESTEP) toMove = TIMESTEP;
+            (*i)->move(toMove);
             (*i)->checkBounds();
             if ((*i)->collide()) splitOccurred = true;
             (*i)->draw();
         }
-        
-        JDL::flush();
-        JDL::sleep(.03);
-    }
-/*
-    while (input != 'q')
-    {
-        //draw everything in toDraw
-        JDL::clear();
-        for (i = toDraw.begin(); i != toDraw.end(); ++i)
+
+        while (splitOccurred)
         {
-            switch (mode)
+            splitOccurred = false;
+            for (s = toDraw.begin(); s != toDraw.end(); ++s)
             {
-            case 0:
-                if (input == 1)
+                if ((*s)->tryOneSplit())
                 {
-                    i->fractureAt(Point(x, y));
+                    splitOccurred = true;
+                    break;
                 }
-                break;
             }
-            i->draw();
         }
+        splitOccurred = false;
+
         JDL::flush();
-
-        input = JDL::wait(&x, &y);
-        if (input == 'b')
+        cycleEnd = clock();
+        double toSleep = TIMESTEP - JDL::timeBetweenClocks(cycleEnd, cycleStart);
+        if (toSleep < 0)
         {
-            mode = 1;
-            vector<Point> newPoints;
-            //newPoints.push_back(Point(x, y));
-            building = toDraw.size();
-            toDraw.push_back(Shape(newPoints, &toDraw));
+            cout << "Running " << -toSleep << " seconds behind! Skipping sleep" << endl;
         }
-        if (input == 'f') //finished building
+        else
         {
-            mode = 0;
+            JDL::sleep(toSleep);
         }
 
-        switch (mode)
+        //delete bad shapes from toDraw:
+        for (s = toDraw.begin(); s != toDraw.end();)
         {
-        case 1: //building mode
-            if (input == 1)
+            if ((*s)->toDelete)
             {
-                toDraw[building].addPoint(Point(x, y));
+                cout << "Erasing a shape!" << endl;
+                s = toDraw.erase(s);
+            }
+            else
+            {
+                s++;
             }
         }
     }
-*/
 }

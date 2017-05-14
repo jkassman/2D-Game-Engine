@@ -11,7 +11,7 @@
 
 //#define RESEARCH_SAVE_ALL
 //#define RESEARCH_SAVE_ONE
-#define RESEARCH_SAVE_STORY
+//#define RESEARCH_SAVE_STORY
 //#define RESEARCH_SAVE_STORY_SHORT
 
 class Crack;
@@ -29,10 +29,14 @@ private:
     std::vector<Line*> lines;
     std::vector<Crack*> cracks;
 
-    double angularVelocity; //in degrees per time step
-    double speed; //pixels per time step
-    double direction; //in degrees
+    double angularVelocity; //in radians per second
+    double speed; //pixels per second
+    double direction; //in radians
 
+    int ignoreFracture; //number of timesteps to skip trying to fracture during a collision.
+    //(Decrements every time step - every time collide() is called.)
+
+    int numPointsInside;
     BoundType bound;
     int xMinBound;
     int xMaxBound;
@@ -42,7 +46,7 @@ private:
     //int subID;
     int lastHit;
     static int newestID;
-    double mass;
+    double mass; //in kg
     double momentI;
     double estRadius;
     
@@ -52,7 +56,6 @@ private:
     double height;
 
     bool sanityCheck();
-    //void calculateCenter();
     void calculateHitBox();
     void calculateMass();
     void calculateMoment();
@@ -61,13 +64,24 @@ private:
     void getCracksOutside(std::vector<Crack*> *toFill);
 
     void boundBounce();
+    void deleteSelfFromToDraw();
     CornerType checkCorners();
 
 protected:
-    double orientation; //in degrees
+    double orientation; //in radians
     Point center;
 
+private:
+    static const double DENSITY_GRAM_PER_METER_CUBED;
 public:
+    //used for physics, NOT drawing.
+    static const double PIXELS_TO_METERS;
+    static const double MATERIAL_THICKNESS_2D;
+    static const double DENSITY_GRAM_PER_METER_SQUARED;
+    static const double DENSITY_KG_PER_METER_SQUARED;
+        
+    bool toDelete;
+
     //TODO: Make these private
     std::vector<Shape*> *toDraw; //pointer to a vector of all drawable shapes.
     static int saveNum;
@@ -86,23 +100,19 @@ public:
     bool inside(Point toTest);
     
     void scale(double factor);
-  //void setAcc(double acceleration, double direction); //in pixels per timestep
-    void accelerate(double acceleration, double degrees);
-    void setVelocity(double speed, double degrees); //in pixels per timestep
+    void accelerate(double acceleration, double radians);
+    void setVelocity(double speed, double radians); //in pixels per timestep
     void setAngularVelocity(double angVel);
     double getSpeed();
     double getDirection();
+    double getMass();
 
-    void move();
-    void translate(double distance, double degrees);
+    void move(double secondsElapsed);
+    void translate(double distance, double radians);
     void rotate(double theta); //about COM
     void draw();
-    void collide(Shape *collider);
+    void Shape::collide(Shape *b, Point cornerPoint);
     bool collide();
-    bool resolveImpulse(Point contactPoint, Shape *B);
-    void ApplyImpulse(const Vec2 &impulse, const Vec2 &contactVector);
-//^^Modified from Copyright (c) 2013 Randy Gaul http://RandyGaul.net
-//(See IEMath.h)
     bool hitBoxOverlapsWith(const Shape &other) const;
     void setBounds(int xMin, int xMax, int yMin, int yMax);
     void copyBounds(const Shape &other);
@@ -113,9 +123,7 @@ public:
     int rayTrace(Line &ray);
 
     void addPoint(Point toAdd);
-    //Line *getLineNearest(const Point clickPoint) const;
-    //Crack *addCrack(Point impactPoint);
-    //int fractureAt(Point clickPoint);
+
     int fractureAt(Point clickPoint, double force);
     void distributeForce(Point impactPoint, double force, double radius,
                          std::vector<int> *forces,
@@ -131,7 +139,7 @@ public:
 
     void grabShapeLines(Point startPoint, Point endPoint,
                         std::vector<Line*> *result);
-
+    Line getNormalLine(Point onShape);
     bool lineOnBorder(const Line &toCheck) const;
     bool containsLine(Line *toCheck) const;
     bool pointOn(Point toCheck, double radius, Point *resultPoint) const;
@@ -165,6 +173,5 @@ void saveShapes(std::string filename, std::vector<Shape*> *toDraw);
 void appendLines(std::vector<Line*> *lines1, std::vector<Line*> &lines2);
 void loadLines(std::string fileName, std::vector<Line*> *toFill); //DOESNT WORK
 Shape *loadShape(std::string filename, std::vector<Shape*> *toDraw);
-void collide1D(double m1, double m2, double &v1i, double &v2i);
 
 #endif

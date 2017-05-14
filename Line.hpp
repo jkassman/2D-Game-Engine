@@ -28,9 +28,8 @@ public:
     Line(Point point1, double length, double direction);
     Line(std::string jsonString);
 
-    //Line(const Line & other);
     void scale(double factor);
-    void translate(double distance, double degrees);
+    void translate(double distance, double radians);
     void rotateAbout(double theta, Point about);
     void draw() const;
     void draw(int index) const;

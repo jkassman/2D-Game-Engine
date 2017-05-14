@@ -14,7 +14,7 @@
 #include "gfx_j.h"
 #endif
 
-const double JDL::PRECISION = 0.1;
+const double JDL::PRECISION = 0.001;
 
 JDL::JDL()
 {
@@ -63,6 +63,7 @@ double JDL::calculateTheta(double x, double y) {
     case -2:
         return (y>0) ? -M_PI/2: M_PI/2;
     }
+    std::cerr << "Actually impossible!" << std::endl;
     return 0; //should never get here.
 }
 
@@ -126,6 +127,11 @@ int JDL::location(double x, double y) {
             return (x > 0)? 1:2;
     else //if  y < 0
             return (x < 0)? 3:4;
+}
+
+double JDL::timeBetweenClocks(clock_t later, clock_t earlier)
+{
+    return ( ((double)(later - earlier)) / CLOCKS_PER_SEC);
 }
 
 #ifdef JDL_USE_SDL
