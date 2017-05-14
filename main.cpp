@@ -232,6 +232,9 @@ int main(int argc, char **argv)
             clock_t moveClock = clock();
             double toMove = JDL::timeBetweenClocks(moveClock, cycleEnd);
             if (toMove > TIMESTEP) toMove = TIMESTEP;
+#ifndef JDL_USE_SDL
+	    toMove = TIMESTEP;
+#endif
             (*i)->move(toMove);
             (*i)->checkBounds();
             if ((*i)->collide()) splitOccurred = true;

@@ -111,7 +111,7 @@ public:
     void translate(double distance, double radians);
     void rotate(double theta); //about COM
     void draw();
-    void Shape::collide(Shape *b, Point cornerPoint);
+    void collide(Shape *b, Point cornerPoint);
     bool collide();
     bool hitBoxOverlapsWith(const Shape &other) const;
     void setBounds(int xMin, int xMax, int yMin, int yMax);
